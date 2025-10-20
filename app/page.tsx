@@ -29,7 +29,13 @@ export default function Home() {
             <div className="text-unix-main text-2xl font-bold">unixtype</div>
           </div>
           <div className="text-unix-sub text-sm">
-            Professional Typing Performance Platform
+            <a
+              href="/leaderboard"
+              className="hover:text-unix-main transition-colors underline-offset-4 hover:underline"
+              aria-label="View full leaderboard"
+            >
+              leaderboard
+            </a>
           </div>
         </div>
       </header>

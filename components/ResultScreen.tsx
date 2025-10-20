@@ -12,8 +12,9 @@ interface ResultScreenProps {
 export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
   const [playerName, setPlayerName] = useState("Guest");
   const [leaderboard, setLeaderboard] = useState<LeaderboardScore[]>([]);
-  const [showNameInput, setShowNameInput] = useState(true);
+  const [showNameInput, setShowNameInput] = useState(false); // Start with results view
   const [nameInputValue, setNameInputValue] = useState("");
+  const [hasSavedScore, setHasSavedScore] = useState(false);
 
   useEffect(() => {
     // Load saved name from localStorage
@@ -25,21 +26,8 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
   }, []);
 
   useEffect(() => {
-    if (!showNameInput) {
-      // Save score to leaderboard
-      LocalLeaderboard.addScore({
-        name: playerName,
-        wpm: Math.round(result.wpm),
-        accuracy: Math.round(result.accuracy),
-        consistency: Math.round(result.consistency),
-        mode: result.mode,
-        mode2: result.mode2,
-        language: result.language,
-        raw: Math.round(result.rawWpm),
-        testDuration: result.testDuration,
-      });
-
-      // Load leaderboard
+    if (!showNameInput && !hasSavedScore) {
+      // Load leaderboard without saving score yet
       const scores = LocalLeaderboard.getTopScores(10, {
         mode: result.mode,
         mode2: result.mode2,
@@ -47,7 +35,30 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
       });
       setLeaderboard(scores);
     }
-  }, [showNameInput, playerName, result]);
+  }, [showNameInput, hasSavedScore, result.mode, result.mode2, result.language]);
+
+  const saveScoreToLeaderboard = () => {
+    LocalLeaderboard.addScore({
+      name: playerName,
+      wpm: Math.round(result.wpm),
+      accuracy: Math.round(result.accuracy),
+      consistency: Math.round(result.consistency),
+      mode: result.mode,
+      mode2: result.mode2,
+      language: result.language,
+      raw: Math.round(result.rawWpm),
+      testDuration: result.testDuration,
+    });
+
+    // Reload leaderboard with new score
+    const scores = LocalLeaderboard.getTopScores(10, {
+      mode: result.mode,
+      mode2: result.mode2,
+      language: result.language,
+    });
+    setLeaderboard(scores);
+    setHasSavedScore(true);
+  };
 
   const handleNameSubmit = () => {
     if (nameInputValue.trim()) {
@@ -56,8 +67,13 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
       if (typeof window !== "undefined") {
         localStorage.setItem("unixtype_username", name);
       }
+      saveScoreToLeaderboard();
       setShowNameInput(false);
     }
+  };
+
+  const handleSkipToResults = () => {
+    setShowNameInput(false);
   };
 
   if (showNameInput) {
@@ -90,7 +106,7 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
 
         <div className="space-y-4">
           <label className="block text-unix-sub text-sm">
-            Enter your name to save to leaderboard:
+            Enter your name to save to leaderboard (optional):
           </label>
           <input
             type="text"
@@ -101,19 +117,27 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
             className="w-full p-3 bg-unix-sub-alt text-unix-text rounded-lg focus:outline-none focus:ring-2 focus:ring-unix-main"
             autoFocus
           />
-          <button
-            onClick={handleNameSubmit}
-            className="w-full px-6 py-3 bg-unix-main text-unix-bg rounded-lg hover:bg-unix-sub transition-colors font-semibold"
-          >
-            Save & View Leaderboard
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleNameSubmit}
+              className="flex-1 px-8 py-4 bg-unix-main text-unix-bg rounded-lg hover:bg-unix-sub transition-colors font-semibold text-lg min-h-[48px]"
+            >
+              Save & View Leaderboard
+            </button>
+            <button
+              onClick={handleSkipToResults}
+              className="flex-1 px-8 py-4 bg-unix-sub-alt text-unix-text rounded-lg hover:bg-unix-sub transition-colors font-semibold text-lg min-h-[48px]"
+            >
+              Skip to Results
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-8">
+    <div className="w-full max-w-6xl mx-auto space-y-8" role="main" aria-label="Test Results">
       <div className="text-4xl font-bold text-center text-unix-main mb-8">
         Test Results
       </div>
@@ -121,28 +145,28 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Results Panel */}
         <div className="space-y-6">
-          <div className="bg-unix-sub-alt rounded-lg p-8">
-            <h2 className="text-2xl font-bold text-unix-text mb-6">Your Performance</h2>
+          <div className="bg-unix-sub-alt rounded-lg p-8" role="region" aria-labelledby="performance-heading">
+            <h2 id="performance-heading" className="text-2xl font-bold text-unix-text mb-6">Your Performance</h2>
             <div className="space-y-4">
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded">
-                <span className="text-unix-sub">WPM</span>
-                <span className="text-3xl font-bold text-unix-main">{Math.round(result.wpm)}</span>
+              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
+                <span className="text-unix-sub" aria-label="Words Per Minute">WPM</span>
+                <span className="text-3xl font-bold text-unix-main" aria-label={`${Math.round(result.wpm)} words per minute`}>{Math.round(result.wpm)}</span>
               </div>
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded">
-                <span className="text-unix-sub">Raw WPM</span>
-                <span className="text-2xl font-bold text-unix-text">{Math.round(result.rawWpm)}</span>
+              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
+                <span className="text-unix-sub" aria-label="Raw Words Per Minute">Raw WPM</span>
+                <span className="text-2xl font-bold text-unix-text" aria-label={`${Math.round(result.rawWpm)} raw words per minute`}>{Math.round(result.rawWpm)}</span>
               </div>
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded">
-                <span className="text-unix-sub">Accuracy</span>
-                <span className="text-2xl font-bold text-unix-text">{Math.round(result.accuracy)}%</span>
+              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
+                <span className="text-unix-sub" aria-label="Typing Accuracy">Accuracy</span>
+                <span className="text-2xl font-bold text-unix-text" aria-label={`${Math.round(result.accuracy)} percent accuracy`}>{Math.round(result.accuracy)}%</span>
               </div>
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded">
-                <span className="text-unix-sub">Consistency</span>
-                <span className="text-2xl font-bold text-unix-text">{Math.round(result.consistency)}%</span>
+              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
+                <span className="text-unix-sub" aria-label="Typing Consistency">Consistency</span>
+                <span className="text-2xl font-bold text-unix-text" aria-label={`${Math.round(result.consistency)} percent consistency`}>{Math.round(result.consistency)}%</span>
               </div>
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded">
-                <span className="text-unix-sub">Characters</span>
-                <span className="text-xl text-unix-text">
+              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
+                <span className="text-unix-sub" aria-label="Character Statistics">Characters</span>
+                <span className="text-xl text-unix-text" aria-label={`${result.correctChars} correct, ${result.incorrectChars} incorrect, ${result.totalChars} total characters`}>
                   <span className="text-unix-main">{result.correctChars}</span>
                   <span className="text-unix-sub mx-1">/</span>
                   <span className="text-unix-error">{result.incorrectChars}</span>
@@ -150,20 +174,30 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
                   <span className="text-unix-text">{result.totalChars}</span>
                 </span>
               </div>
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded">
-                <span className="text-unix-sub">Time</span>
-                <span className="text-xl text-unix-text">{Math.round(result.testDuration)}s</span>
+              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
+                <span className="text-unix-sub" aria-label="Test Duration">Time</span>
+                <span className="text-xl text-unix-text" aria-label={`${Math.round(result.testDuration)} seconds`}>{Math.round(result.testDuration)}s</span>
               </div>
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded">
-                <span className="text-unix-sub">Mode</span>
-                <span className="text-xl text-unix-text">{result.mode} {result.mode2}</span>
+              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
+                <span className="text-unix-sub" aria-label="Test Mode">Mode</span>
+                <span className="text-xl text-unix-text" aria-label={`${result.mode} mode, ${result.mode2} ${result.mode === 'time' ? 'seconds' : 'words'}`}>{result.mode} {result.mode2}</span>
               </div>
             </div>
           </div>
 
+          {!hasSavedScore && (
+            <button
+              onClick={() => setShowNameInput(true)}
+              className="w-full px-8 py-4 bg-unix-sub-alt text-unix-text rounded-lg hover:bg-unix-sub transition-colors font-semibold text-lg min-h-[48px] mb-3"
+              aria-label="Save your score to the leaderboard"
+            >
+              Save Score to Leaderboard
+            </button>
+          )}
           <button
             onClick={onRestart}
-            className="w-full px-6 py-4 bg-unix-main text-unix-bg rounded-lg hover:bg-unix-sub transition-colors font-semibold text-lg"
+            className="w-full px-8 py-4 bg-unix-main text-unix-bg rounded-lg hover:bg-unix-sub transition-colors font-semibold text-lg min-h-[48px]"
+            aria-label="Start a new typing test"
           >
             Next Test
           </button>
@@ -171,20 +205,20 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
 
         {/* Leaderboard Panel */}
         <div className="space-y-6">
-          <div className="bg-unix-sub-alt rounded-lg p-8">
+          <div className="bg-unix-sub-alt rounded-lg p-8" role="region" aria-labelledby="leaderboard-heading">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-unix-text">Leaderboard</h2>
-              <div className="text-sm text-unix-sub">
+              <h2 id="leaderboard-heading" className="text-2xl font-bold text-unix-text">Leaderboard</h2>
+              <div className="text-sm text-unix-sub" aria-label={`Leaderboard filter: ${result.mode} ${result.mode2} in ${result.language}`}>
                 {result.mode} {result.mode2} • {result.language}
               </div>
             </div>
 
             {leaderboard.length === 0 ? (
-              <div className="text-center text-unix-sub py-8">
+              <div className="text-center text-unix-sub py-8" role="status" aria-live="polite">
                 No scores yet. Be the first!
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2" role="list" aria-label="Leaderboard entries">
                 {leaderboard.map((score, index) => {
                   const isCurrentPlayer = score.name === playerName &&
                     Math.abs(score.timestamp - Date.now()) < 5000; // Highlight if submitted within last 5 seconds
@@ -197,10 +231,12 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
                           ? "bg-unix-main text-unix-bg"
                           : "bg-unix-bg hover:bg-opacity-80"
                       }`}
+                      role="listitem"
+                      aria-label={`${score.name}: Rank ${index + 1}, ${score.wpm} words per minute, ${Math.round(score.accuracy)}% accuracy, ${Math.round(score.consistency)}% consistency${isCurrentPlayer ? ' (Your score)' : ''}`}
                     >
                       <div className={`text-2xl font-bold w-8 ${
                         isCurrentPlayer ? "text-unix-bg" : "text-unix-main"
-                      }`}>
+                      }`} aria-hidden="true">
                         {index + 1}
                       </div>
                       <div className="flex-1">
@@ -211,18 +247,18 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
                         </div>
                         <div className={`text-sm ${
                           isCurrentPlayer ? "text-unix-bg opacity-80" : "text-unix-sub"
-                        }`}>
+                        }`} aria-label={`${Math.round(score.accuracy)}% accuracy, ${Math.round(score.consistency)}% consistency`}>
                           {Math.round(score.accuracy)}% acc • {Math.round(score.consistency)}% cons
                         </div>
                       </div>
                       <div className={`text-2xl font-bold ${
                         isCurrentPlayer ? "text-unix-bg" : "text-unix-main"
-                      }`}>
+                      }`} aria-label={`${score.wpm} words per minute`}>
                         {score.wpm}
                       </div>
                       <div className={`text-sm ${
                         isCurrentPlayer ? "text-unix-bg opacity-80" : "text-unix-sub"
-                      }`}>
+                      }`} aria-hidden="true">
                         wpm
                       </div>
                     </div>
@@ -232,15 +268,16 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
             )}
           </div>
 
-          <div className="bg-unix-sub-alt rounded-lg p-6">
+          <div className="bg-unix-sub-alt rounded-lg p-6" role="region" aria-labelledby="stats-heading">
+            <h3 id="stats-heading" className="text-lg font-semibold text-unix-text mb-4">Statistics</h3>
             <div className="text-sm text-unix-sub space-y-2">
               <div className="flex justify-between">
                 <span>Total Scores:</span>
-                <span className="text-unix-text">{LocalLeaderboard.getTotalScores()}</span>
+                <span className="text-unix-text" aria-label={`${LocalLeaderboard.getTotalScores()} total scores in leaderboard`}>{LocalLeaderboard.getTotalScores()}</span>
               </div>
               <div className="flex justify-between">
                 <span>Your Rank:</span>
-                <span className="text-unix-main font-semibold">
+                <span className="text-unix-main font-semibold" aria-label={`Your rank is ${LocalLeaderboard.getUserRank(playerName, result.mode, result.mode2, result.language) || 'Not available'}`}>
                   #{LocalLeaderboard.getUserRank(playerName, result.mode, result.mode2, result.language) || "N/A"}
                 </span>
               </div>
