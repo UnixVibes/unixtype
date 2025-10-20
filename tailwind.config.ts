@@ -8,14 +8,29 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Fira Code', 'monospace'],
+        mono: ['Fira Code', 'monospace'],
+      },
       colors: {
-        'unix-bg': '#0a1e1e',
+        'unix-bg': '#0a0e1a',
         'unix-main': '#14b8a6',
-        'unix-sub': '#2dd4bf',
-        'unix-sub-alt': '#0d2626',
-        'unix-text': '#d1fae5',
+        'unix-sub': '#5eead4',
+        'unix-sub-alt': '#0d1b2a',
+        'unix-text': '#f0fdfa',
         'unix-error': '#ef4444',
         'unix-error-dark': '#991b1b',
+        'unix-success': '#10b981',
+        'unix-accent': '#06b6d4',
+        'unix-border': '#134e4a',
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+      },
+      boxShadow: {
+        'tech': '0 0 20px rgba(20, 184, 166, 0.3)',
+        'tech-lg': '0 0 40px rgba(20, 184, 166, 0.4)',
       },
     },
   },

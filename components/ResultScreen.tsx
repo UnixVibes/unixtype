@@ -1,89 +1,85 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { TestResult, LeaderboardScore } from "@/types";
-import LocalLeaderboard from "@/lib/local-leaderboard";
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { TestResult } from '@/types';
+import { saveScore } from '@/lib/leaderboard';
+import { getRank, getNextRank, getProgressToNextRank } from '@/lib/ranks';
+import { QRCodeCanvas } from 'qrcode.react';
+import html2canvas from 'html2canvas';
+import Leaderboard from './Leaderboard';
+import { getQuoteForPerformance } from '@/lib/developer-quotes';
 
 interface ResultScreenProps {
   result: TestResult;
   onRestart: () => void;
+  maxStreak: number;
 }
 
-export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
-  const [playerName, setPlayerName] = useState("Guest");
-  const [leaderboard, setLeaderboard] = useState<LeaderboardScore[]>([]);
-  const [showNameInput, setShowNameInput] = useState(false); // Start with results view
-  const [nameInputValue, setNameInputValue] = useState("");
-  const [hasSavedScore, setHasSavedScore] = useState(false);
+export default function ResultScreen({ result, onRestart, maxStreak }: ResultScreenProps) {
+  const [playerName, setPlayerName] = useState('');
+  const [showNameInput, setShowNameInput] = useState(true);
+  const [nameInputValue, setNameInputValue] = useState('');
+  const [savedEntryId, setSavedEntryId] = useState<string | null>(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [fortuneQuote, setFortuneQuote] = useState('');
 
   useEffect(() => {
     // Load saved name from localStorage
-    if (typeof window !== "undefined") {
-      const savedName = localStorage.getItem("unixtype_username") || "Guest";
-      setPlayerName(savedName);
+    if (typeof window !== 'undefined') {
+      const savedName = localStorage.getItem('devtype_username') || '';
       setNameInputValue(savedName);
     }
-  }, []);
-
-  useEffect(() => {
-    if (!showNameInput && !hasSavedScore) {
-      // Load leaderboard without saving score yet
-      const scores = LocalLeaderboard.getTopScores(10, {
-        mode: result.mode,
-        mode2: result.mode2,
-        language: result.language,
-      });
-      setLeaderboard(scores);
-    }
-  }, [showNameInput, hasSavedScore, result.mode, result.mode2, result.language]);
-
-  const saveScoreToLeaderboard = () => {
-    LocalLeaderboard.addScore({
-      name: playerName,
-      wpm: Math.round(result.wpm),
-      accuracy: Math.round(result.accuracy),
-      consistency: Math.round(result.consistency),
-      mode: result.mode,
-      mode2: result.mode2,
-      language: result.language,
-      raw: Math.round(result.rawWpm),
-      testDuration: result.testDuration,
-    });
-
-    // Reload leaderboard with new score
-    const scores = LocalLeaderboard.getTopScores(10, {
-      mode: result.mode,
-      mode2: result.mode2,
-      language: result.language,
-    });
-    setLeaderboard(scores);
-    setHasSavedScore(true);
-  };
+    // Generate fortune cookie quote based on performance
+    const quote = getQuoteForPerformance(result.wpm);
+    setFortuneQuote(quote);
+  }, [result.wpm]);
 
   const handleNameSubmit = () => {
-    if (nameInputValue.trim()) {
-      const name = nameInputValue.trim();
-      setPlayerName(name);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("unixtype_username", name);
-      }
-      saveScoreToLeaderboard();
-      setShowNameInput(false);
-    }
-  };
+    const name = nameInputValue.trim() || 'Anonymous';
+    setPlayerName(name);
 
-  const handleSkipToResults = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('devtype_username', name);
+    }
+
+    const rank = getRank(result.wpm);
+
+    // Save score to leaderboard
+    const entry = saveScore({
+      name,
+      wpm: result.wpm,
+      rawWpm: result.rawWpm,
+      accuracy: result.accuracy,
+      consistency: result.consistency,
+      rank: rank.title,
+      rankEmoji: rank.emoji,
+      maxStreak,
+    });
+
+    setSavedEntryId(entry.id);
     setShowNameInput(false);
   };
 
+  const handleSkipToResults = () => {
+    setPlayerName('Guest');
+    setShowNameInput(false);
+  };
+
+  // Show leaderboard view
+  if (showLeaderboard) {
+    return <Leaderboard onClose={() => setShowLeaderboard(false)} highlightId={savedEntryId || undefined} />;
+  }
+
+  // Show name input screen
   if (showNameInput) {
     return (
       <div className="w-full max-w-md mx-auto space-y-8 text-center">
-        <div className="text-4xl font-bold text-unix-main mb-8">
+        <div className="text-5xl font-bold bg-gradient-to-r from-unix-main to-unix-accent bg-clip-text text-transparent mb-8">
           Test Complete!
         </div>
 
-        <div className="bg-unix-sub-alt rounded-lg p-8 space-y-6">
+        <div className="glass-effect rounded-2xl p-8 space-y-6 border border-unix-border/50">
           <div className="grid grid-cols-2 gap-4 text-lg">
             <div>
               <div className="text-unix-sub text-sm">WPM</div>
@@ -94,8 +90,8 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
               <div className="text-3xl font-bold text-unix-text">{Math.round(result.accuracy)}%</div>
             </div>
             <div>
-              <div className="text-unix-sub text-sm">Raw WPM</div>
-              <div className="text-2xl font-bold text-unix-text">{Math.round(result.rawWpm)}</div>
+              <div className="text-unix-sub text-sm">Max Streak</div>
+              <div className="text-3xl font-bold text-unix-accent">{maxStreak}</div>
             </div>
             <div>
               <div className="text-unix-sub text-sm">Consistency</div>
@@ -105,30 +101,30 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
         </div>
 
         <div className="space-y-4">
-          <label className="block text-unix-sub text-sm">
-            Enter your name to save to leaderboard (optional):
+          <label className="block text-unix-sub text-sm font-medium">
+            Enter your name to save to leaderboard:
           </label>
           <input
             type="text"
             value={nameInputValue}
             onChange={(e) => setNameInputValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleNameSubmit()}
+            onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
             placeholder="Your name"
-            className="w-full p-3 bg-unix-sub-alt text-unix-text rounded-lg focus:outline-none focus:ring-2 focus:ring-unix-main"
+            className="w-full p-4 glass-effect text-unix-text rounded-xl focus:outline-none focus:ring-2 focus:ring-unix-main border border-unix-border/50 transition-all duration-200"
             autoFocus
           />
           <div className="flex gap-3">
             <button
               onClick={handleNameSubmit}
-              className="flex-1 px-8 py-4 bg-unix-main text-unix-bg rounded-lg hover:bg-unix-sub transition-colors font-semibold text-lg min-h-[48px]"
+              className="flex-1 px-8 py-4 bg-unix-main text-white rounded-xl hover:bg-unix-main/80 transition-all duration-200 font-semibold text-lg shadow-lg"
             >
-              Save & View Leaderboard
+              Save & Continue
             </button>
             <button
               onClick={handleSkipToResults}
-              className="flex-1 px-8 py-4 bg-unix-sub-alt text-unix-text rounded-lg hover:bg-unix-sub transition-colors font-semibold text-lg min-h-[48px]"
+              className="flex-1 px-8 py-4 glass-effect text-unix-text rounded-xl hover:bg-unix-main/10 transition-all duration-200 font-semibold text-lg border border-unix-border"
             >
-              Skip to Results
+              Skip
             </button>
           </div>
         </div>
@@ -136,154 +132,221 @@ export default function ResultScreen({ result, onRestart }: ResultScreenProps) {
     );
   }
 
-  return (
-    <div className="w-full max-w-6xl mx-auto space-y-8" role="main" aria-label="Test Results">
-      <div className="text-4xl font-bold text-center text-unix-main mb-8">
-        Test Results
-      </div>
+  const rank = getRank(result.wpm);
+  const nextRank = getNextRank(result.wpm);
+  const progress = getProgressToNextRank(result.wpm);
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Results Panel */}
-        <div className="space-y-6">
-          <div className="bg-unix-sub-alt rounded-lg p-8" role="region" aria-labelledby="performance-heading">
-            <h2 id="performance-heading" className="text-2xl font-bold text-unix-text mb-6">Your Performance</h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
-                <span className="text-unix-sub" aria-label="Words Per Minute">WPM</span>
-                <span className="text-3xl font-bold text-unix-main" aria-label={`${Math.round(result.wpm)} words per minute`}>{Math.round(result.wpm)}</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
-                <span className="text-unix-sub" aria-label="Raw Words Per Minute">Raw WPM</span>
-                <span className="text-2xl font-bold text-unix-text" aria-label={`${Math.round(result.rawWpm)} raw words per minute`}>{Math.round(result.rawWpm)}</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
-                <span className="text-unix-sub" aria-label="Typing Accuracy">Accuracy</span>
-                <span className="text-2xl font-bold text-unix-text" aria-label={`${Math.round(result.accuracy)} percent accuracy`}>{Math.round(result.accuracy)}%</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
-                <span className="text-unix-sub" aria-label="Typing Consistency">Consistency</span>
-                <span className="text-2xl font-bold text-unix-text" aria-label={`${Math.round(result.consistency)} percent consistency`}>{Math.round(result.consistency)}%</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
-                <span className="text-unix-sub" aria-label="Character Statistics">Characters</span>
-                <span className="text-xl text-unix-text" aria-label={`${result.correctChars} correct, ${result.incorrectChars} incorrect, ${result.totalChars} total characters`}>
-                  <span className="text-unix-main">{result.correctChars}</span>
-                  <span className="text-unix-sub mx-1">/</span>
-                  <span className="text-unix-error">{result.incorrectChars}</span>
-                  <span className="text-unix-sub mx-1">/</span>
-                  <span className="text-unix-text">{result.totalChars}</span>
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
-                <span className="text-unix-sub" aria-label="Test Duration">Time</span>
-                <span className="text-xl text-unix-text" aria-label={`${Math.round(result.testDuration)} seconds`}>{Math.round(result.testDuration)}s</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-unix-bg rounded" role="listitem">
-                <span className="text-unix-sub" aria-label="Test Mode">Mode</span>
-                <span className="text-xl text-unix-text" aria-label={`${result.mode} mode, ${result.mode2} ${result.mode === 'time' ? 'seconds' : 'words'}`}>{result.mode} {result.mode2}</span>
-              </div>
-            </div>
+  const downloadScoreCard = async () => {
+    const scoreCard = document.getElementById('score-card');
+    if (!scoreCard) return;
+
+    try {
+      const canvas = await html2canvas(scoreCard, {
+        backgroundColor: '#0a0e1a',
+        scale: 2,
+      });
+
+      const link = document.createElement('a');
+      link.download = `devtype-${rank.title.toLowerCase().replace(' ', '-')}-${Math.round(result.wpm)}wpm.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    } catch (error) {
+      console.error('Failed to download score card:', error);
+    }
+  };
+
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+
+  return (
+    <div className="w-full max-w-6xl mx-auto space-y-8">
+      {/* Shareable Score Card */}
+      <div id="score-card" className="max-w-2xl mx-auto">
+        <div className="glass-effect rounded-3xl p-8 border-2 border-unix-main/30 shadow-lg relative overflow-hidden">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-5">
+            <div
+              className="absolute top-0 left-0 w-full h-full"
+              style={{
+                backgroundImage:
+                  'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(20, 184, 166, 0.1) 10px, rgba(20, 184, 166, 0.1) 20px)',
+              }}
+            />
           </div>
 
-          {!hasSavedScore && (
-            <button
-              onClick={() => setShowNameInput(true)}
-              className="w-full px-8 py-4 bg-unix-sub-alt text-unix-text rounded-lg hover:bg-unix-sub transition-colors font-semibold text-lg min-h-[48px] mb-3"
-              aria-label="Save your score to the leaderboard"
-            >
-              Save Score to Leaderboard
-            </button>
-          )}
-          <button
-            onClick={onRestart}
-            className="w-full px-8 py-4 bg-unix-main text-unix-bg rounded-lg hover:bg-unix-sub transition-colors font-semibold text-lg min-h-[48px]"
-            aria-label="Start a new typing test"
-          >
-            Next Test
-          </button>
-        </div>
+          {/* Content */}
+          <div className="relative z-10 space-y-6">
+            {/* Header */}
+            <div className="text-center border-b border-unix-border/30 pb-6">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-unix-main to-unix-accent rounded-xl flex items-center justify-center">
+                  <span className="text-white font-bold text-xl">⚡</span>
+                </div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-unix-main to-unix-accent bg-clip-text text-transparent">
+                  DevType Challenge
+                </h1>
+              </div>
+              <p className="text-unix-sub text-sm">
+                Powered by <span className="text-unix-accent font-bold">Unixdev</span>
+              </p>
+            </div>
 
-        {/* Leaderboard Panel */}
-        <div className="space-y-6">
-          <div className="bg-unix-sub-alt rounded-lg p-8" role="region" aria-labelledby="leaderboard-heading">
-            <div className="flex justify-between items-center mb-6">
-              <h2 id="leaderboard-heading" className="text-2xl font-bold text-unix-text">Leaderboard</h2>
-              <div className="text-sm text-unix-sub" aria-label={`Leaderboard filter: ${result.mode} ${result.mode2} in ${result.language}`}>
-                {result.mode} {result.mode2} • {result.language}
+            {/* Rank Badge */}
+            <div className="text-center py-4">
+              <div className="text-8xl mb-3">{rank.emoji}</div>
+              <div className="text-4xl font-bold bg-gradient-to-r from-unix-main to-unix-accent bg-clip-text text-transparent mb-2">
+                {rank.title}
+              </div>
+              <p className="text-lg text-unix-sub italic">&quot;{rank.message}&quot;</p>
+              {playerName && playerName !== 'Guest' && (
+                <p className="text-2xl text-unix-text font-bold mt-4">{playerName}</p>
+              )}
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="glass-effect rounded-2xl p-6 text-center border border-unix-main/30">
+                <div className="text-5xl font-bold text-unix-main mb-2">{Math.round(result.wpm)}</div>
+                <div className="text-sm text-unix-sub font-medium">WPM</div>
+              </div>
+              <div className="glass-effect rounded-2xl p-6 text-center border border-unix-success/30">
+                <div className="text-5xl font-bold text-unix-success mb-2">{Math.round(result.accuracy)}%</div>
+                <div className="text-sm text-unix-sub font-medium">Accuracy</div>
+              </div>
+              <div className="glass-effect rounded-2xl p-6 text-center border border-unix-accent/30">
+                <div className="text-3xl font-bold text-unix-accent mb-2">{maxStreak}</div>
+                <div className="text-sm text-unix-sub font-medium">Max Streak</div>
+              </div>
+              <div className="glass-effect rounded-2xl p-6 text-center border border-unix-border/30">
+                <div className="text-3xl font-bold text-unix-text mb-2">{Math.round(result.rawWpm)}</div>
+                <div className="text-sm text-unix-sub font-medium">Raw WPM</div>
               </div>
             </div>
 
-            {leaderboard.length === 0 ? (
-              <div className="text-center text-unix-sub py-8" role="status" aria-live="polite">
-                No scores yet. Be the first!
-              </div>
-            ) : (
-              <div className="space-y-2" role="list" aria-label="Leaderboard entries">
-                {leaderboard.map((score, index) => {
-                  const isCurrentPlayer = score.name === playerName &&
-                    Math.abs(score.timestamp - Date.now()) < 5000; // Highlight if submitted within last 5 seconds
-
-                  return (
-                    <div
-                      key={score.id}
-                      className={`flex items-center gap-4 p-4 rounded transition-colors ${
-                        isCurrentPlayer
-                          ? "bg-unix-main text-unix-bg"
-                          : "bg-unix-bg hover:bg-opacity-80"
-                      }`}
-                      role="listitem"
-                      aria-label={`${score.name}: Rank ${index + 1}, ${score.wpm} words per minute, ${Math.round(score.accuracy)}% accuracy, ${Math.round(score.consistency)}% consistency${isCurrentPlayer ? ' (Your score)' : ''}`}
-                    >
-                      <div className={`text-2xl font-bold w-8 ${
-                        isCurrentPlayer ? "text-unix-bg" : "text-unix-main"
-                      }`} aria-hidden="true">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1">
-                        <div className={`font-semibold ${
-                          isCurrentPlayer ? "text-unix-bg" : "text-unix-text"
-                        }`}>
-                          {score.name}
-                        </div>
-                        <div className={`text-sm ${
-                          isCurrentPlayer ? "text-unix-bg opacity-80" : "text-unix-sub"
-                        }`} aria-label={`${Math.round(score.accuracy)}% accuracy, ${Math.round(score.consistency)}% consistency`}>
-                          {Math.round(score.accuracy)}% acc • {Math.round(score.consistency)}% cons
-                        </div>
-                      </div>
-                      <div className={`text-2xl font-bold ${
-                        isCurrentPlayer ? "text-unix-bg" : "text-unix-main"
-                      }`} aria-label={`${score.wpm} words per minute`}>
-                        {score.wpm}
-                      </div>
-                      <div className={`text-sm ${
-                        isCurrentPlayer ? "text-unix-bg opacity-80" : "text-unix-sub"
-                      }`} aria-hidden="true">
-                        wpm
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* Progress Bar */}
+            {nextRank && (
+              <div className="bg-unix-bg/50 rounded-xl p-4 border border-unix-border/30">
+                <div className="flex justify-between text-xs text-unix-sub mb-2">
+                  <span>
+                    Next: {nextRank.emoji} {nextRank.title}
+                  </span>
+                  <span>{nextRank.minWpm - Math.round(result.wpm)} WPM to go</span>
+                </div>
+                <div className="w-full bg-unix-sub-alt rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-unix-main to-unix-accent h-full transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
               </div>
             )}
-          </div>
 
-          <div className="bg-unix-sub-alt rounded-lg p-6" role="region" aria-labelledby="stats-heading">
-            <h3 id="stats-heading" className="text-lg font-semibold text-unix-text mb-4">Statistics</h3>
-            <div className="text-sm text-unix-sub space-y-2">
-              <div className="flex justify-between">
-                <span>Total Scores:</span>
-                <span className="text-unix-text" aria-label={`${LocalLeaderboard.getTotalScores()} total scores in leaderboard`}>{LocalLeaderboard.getTotalScores()}</span>
+            {/* Footer with QR Code */}
+            <div className="text-center pt-4 border-t border-unix-border/30">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 text-left">
+                  <p className="text-unix-main font-bold text-lg mb-1">#DevTypeChallenge</p>
+                  <p className="text-unix-sub text-sm mb-1">Can you beat this score?</p>
+                  <p className="text-unix-accent text-xs font-semibold">by Unixdev</p>
+                </div>
+
+                {/* QR Code */}
+                <div className="bg-white p-2 rounded-lg">
+                  <QRCodeCanvas value={currentUrl} size={80} level="M" />
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>Your Rank:</span>
-                <span className="text-unix-main font-semibold" aria-label={`Your rank is ${LocalLeaderboard.getUserRank(playerName, result.mode, result.mode2, result.language) || 'Not available'}`}>
-                  #{LocalLeaderboard.getUserRank(playerName, result.mode, result.mode2, result.language) || "N/A"}
-                </span>
-              </div>
+              <p className="text-unix-sub text-xs mt-2">Scan to play • Visit our booth</p>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Fortune Cookie Quote */}
+      <motion.div
+        className="max-w-2xl mx-auto"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.6 }}
+      >
+        <div className="relative">
+          {/* Fortune Cookie Container */}
+          <div className="glass-effect rounded-2xl p-6 border border-unix-accent/30 bg-gradient-to-br from-unix-accent/5 to-unix-main/5">
+            <div className="flex items-start gap-4">
+              {/* Fortune Cookie Icon */}
+              <motion.div
+                className="text-5xl flex-shrink-0"
+                animate={{
+                  rotate: [0, -5, 5, -5, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                🥠
+              </motion.div>
+
+              {/* Quote Content */}
+              <div className="flex-1">
+                <div className="text-unix-accent text-xs font-bold uppercase tracking-wider mb-2">
+                  Developer Fortune Cookie
+                </div>
+                <motion.p
+                  className="text-unix-text text-lg font-medium leading-relaxed"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5, duration: 0.8 }}
+                >
+                  &ldquo;{fortuneQuote}&rdquo;
+                </motion.p>
+              </div>
+            </div>
+
+            {/* Decorative sparkles */}
+            <div className="absolute -top-2 -right-2 text-unix-accent text-2xl opacity-60">✨</div>
+            <div className="absolute -bottom-2 -left-2 text-unix-main text-xl opacity-40">✨</div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-wrap gap-4 justify-center">
+        <button
+          onClick={downloadScoreCard}
+          className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-unix-main to-unix-accent text-white rounded-xl hover:shadow-lg transition-all duration-200 font-bold text-lg"
+        >
+          📥 Download Score Card
+        </button>
+        <button
+          onClick={() => setShowLeaderboard(true)}
+          className="inline-flex items-center gap-2 px-8 py-4 bg-unix-accent text-white rounded-xl hover:shadow-lg transition-all duration-200 font-bold text-lg"
+        >
+          🏆 View Leaderboard
+        </button>
+        <button
+          onClick={() => {
+            const shareText = `🎮 DevType Challenge Results!\n\n${rank.emoji} ${rank.title}\n⚡ ${Math.round(result.wpm)} WPM\n🎯 ${Math.round(result.accuracy)}% Accuracy\n🔥 ${maxStreak} Max Streak\n\nCan you beat my score? #DevTypeChallenge`;
+            if (navigator.share) {
+              navigator.share({
+                title: 'DevType Challenge',
+                text: shareText,
+                url: window.location.href,
+              }).catch(() => {});
+            } else {
+              navigator.clipboard.writeText(shareText);
+              alert('Score copied to clipboard! Share it with your friends! 🎉');
+            }
+          }}
+          className="inline-flex items-center gap-2 px-8 py-4 bg-unix-success text-white rounded-xl hover:shadow-lg transition-all duration-200 font-bold text-lg"
+        >
+          📱 Share Score
+        </button>
+        <button
+          onClick={onRestart}
+          className="inline-flex items-center gap-2 px-8 py-4 bg-unix-main text-white rounded-xl hover:bg-unix-main/80 transition-all duration-200 font-semibold text-lg shadow-lg"
+        >
+          🔄 Play Again
+        </button>
       </div>
     </div>
   );

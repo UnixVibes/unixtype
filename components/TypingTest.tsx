@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { generateWords } from "@/lib/words";
 import { TestResult } from "@/types";
 import { countChars, calculateWPM, calculateAccuracy } from "@/lib/test-stats";
+import { sounds } from "@/lib/sounds";
 
 interface TypingTestProps {
   onComplete: (result: TestResult) => void;
@@ -28,10 +29,17 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     }
     return false;
   });
+  const [streak, setStreak] = useState(0);
+  const [maxStreak, setMaxStreak] = useState(0);
+  const [combo, setCombo] = useState(1);
+  const [particles, setParticles] = useState<Array<{id: number, x: number, y: number}>>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const wpmIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const wordsContainerRef = useRef<HTMLDivElement>(null);
+  const currentWordRef = useRef<HTMLDivElement>(null);
+  const [caretPosition, setCaretPosition] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     resetTest();
@@ -43,6 +51,30 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     }
   }, []);
 
+  // Update caret position when current word or input changes
+  useEffect(() => {
+    if (currentWordRef.current && wordsContainerRef.current && isActive) {
+      const containerRect = wordsContainerRef.current.getBoundingClientRect();
+      const wordRect = currentWordRef.current.getBoundingClientRect();
+
+      // Create a temporary span to measure the width of typed characters
+      const span = document.createElement('span');
+      span.style.visibility = 'hidden';
+      span.style.position = 'absolute';
+      span.style.fontSize = '1.5rem'; // text-2xl
+      span.style.fontFamily = getComputedStyle(currentWordRef.current).fontFamily;
+      span.textContent = currentInput;
+      document.body.appendChild(span);
+      const textWidth = span.getBoundingClientRect().width;
+      document.body.removeChild(span);
+
+      setCaretPosition({
+        top: wordRect.top - containerRect.top,
+        left: wordRect.left - containerRect.left + textWidth
+      });
+    }
+  }, [currentInput, currentWordIndex, isActive]);
+
   const resetTest = useCallback(() => {
     const newWords = generateWords(mode === "words" ? wordCount : 200);
     setWords(newWords);
@@ -53,6 +85,10 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     setTypedWords([]);
     setTimeLeft(mode === "time" ? timeLimit : 0);
     setWpmHistory([]);
+    setStreak(0);
+    setMaxStreak(0);
+    setCombo(1);
+    setParticles([]);
 
     if (timerRef.current) clearInterval(timerRef.current);
     if (wpmIntervalRef.current) clearInterval(wpmIntervalRef.current);
@@ -99,9 +135,16 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
   const endTest = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (wpmIntervalRef.current) clearInterval(wpmIntervalRef.current);
+    setIsActive(false);
 
     const endTime = Date.now();
     const duration = startTime ? (endTime - startTime) / 1000 : 1;
+
+    // Don't end test if no words were typed
+    if (typedWords.length === 0 && !currentInput.trim()) {
+      console.log("Test ended with no typed words - ignoring");
+      return;
+    }
 
     // Use Monkeytype's character counting logic
     const targetWords = words.slice(0, typedWords.length);
@@ -132,10 +175,14 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       mode,
       mode2: mode === "time" ? timeLimit.toString() : wordCount.toString(),
       language: "english",
+      maxStreak,
     };
 
+    // Play test complete sound
+    sounds.playTestComplete();
+
     onComplete(result);
-  }, [startTime, typedWords, words, mode, timeLimit, wordCount, wpmHistory, onComplete]);
+  }, [startTime, typedWords, currentInput, words, mode, timeLimit, wordCount, wpmHistory, maxStreak, onComplete]);
 
   useEffect(() => {
     if (mode === "words" && currentWordIndex >= wordCount && isActive) {
@@ -148,6 +195,17 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
 
     if (!isActive && value.length > 0) {
       startTest();
+    }
+
+    // Play keystroke sound for correct characters
+    if (value.length > currentInput.length) {
+      const currentWord = words[currentWordIndex];
+      const typedChar = value[value.length - 1];
+      const expectedChar = currentWord?.[value.length - 1];
+
+      if (typedChar === expectedChar) {
+        sounds.playKeystroke();
+      }
     }
 
     if (value.endsWith(" ")) {
@@ -164,6 +222,48 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
 
     setTypedWords((prev) => [...prev, typedWord]);
     setCurrentWordIndex((prev) => prev + 1);
+
+    // Check if word is correct for streak/combo
+    const isCorrect = typedWord === currentWord;
+    if (isCorrect) {
+      const newStreak = streak + 1;
+      setStreak(newStreak);
+      setMaxStreak((prev) => Math.max(prev, newStreak));
+
+      // Play word complete sound
+      sounds.playWordComplete();
+
+      // Increase combo every 5 correct words
+      if (newStreak % 5 === 0) {
+        setCombo((prev) => Math.min(prev + 0.5, 3));
+        sounds.playComboUp(); // Play combo sound
+      }
+
+      // Play streak milestone sound at 10, 20, 30, etc.
+      if (newStreak % 10 === 0) {
+        sounds.playStreakMilestone(newStreak);
+      }
+
+      // Add particle effect
+      if (currentWordRef.current) {
+        const rect = currentWordRef.current.getBoundingClientRect();
+        const newParticle = {
+          id: Date.now(),
+          x: rect.left + rect.width / 2,
+          y: rect.top,
+        };
+        setParticles((prev) => [...prev, newParticle]);
+
+        // Remove particle after animation
+        setTimeout(() => {
+          setParticles((prev) => prev.filter(p => p.id !== newParticle.id));
+        }, 1000);
+      }
+    } else {
+      setStreak(0);
+      setCombo(1);
+      sounds.playError(); // Play error sound
+    }
   };
 
   const getWordClass = (index: number) => {
@@ -215,76 +315,72 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
   if (showInstructions) {
     return (
       <div className="w-full max-w-2xl mx-auto space-y-8">
-        <div className="bg-unix-sub-alt rounded-lg p-8" role="dialog" aria-labelledby="instructions-title" aria-modal="true">
-          <h1 id="instructions-title" className="text-3xl font-bold text-unix-main mb-6">
-            Welcome to UnixType! 🚀
-          </h1>
-          
+        <div className="glass-effect rounded-2xl p-8 shadow-2xl" role="dialog" aria-labelledby="instructions-title" aria-modal="true">
+          <div className="text-center mb-8">
+            <div className="text-6xl mb-4">⚡</div>
+            <h1 id="instructions-title" className="text-5xl font-bold bg-gradient-to-r from-unix-main to-unix-accent bg-clip-text text-transparent mb-3">
+              DevType Challenge
+            </h1>
+            <p className="text-2xl text-unix-sub font-semibold mb-2">Test Your Developer Speed!</p>
+            <p className="text-sm text-unix-accent font-semibold">Powered by Unixdev</p>
+          </div>
+
           <div className="space-y-6 text-unix-text">
-            <section>
-              <h2 className="text-xl font-semibold text-unix-main mb-3">How to Use</h2>
-              <ul className="space-y-2 list-disc list-inside">
-                <li>Click the input field or start typing to begin the test</li>
-                <li>Type the highlighted word exactly as shown</li>
-                <li>Press space after each word to move to the next one</li>
-                <li>The test starts automatically when you begin typing</li>
-                <li>Complete the test before time runs out or reach the word count goal</li>
+            <section className="bg-unix-bg/50 rounded-xl p-6 border border-unix-main/20">
+              <h2 className="text-2xl font-bold text-unix-main mb-4 flex items-center gap-2">
+                🎮 Game Rules
+              </h2>
+              <ul className="space-y-3 text-base">
+                <li className="flex items-start gap-3">
+                  <span className="text-unix-main text-xl">→</span>
+                  <span>Type <strong className="text-unix-main">developer terms</strong> (JavaScript, React, Docker, etc.)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-unix-main text-xl">→</span>
+                  <span>Build <strong className="text-unix-success">streaks</strong> 🔥 by typing correctly</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-unix-main text-xl">→</span>
+                  <span>Unlock <strong className="text-unix-accent">combo multipliers</strong> ×1.5, ×2.0, ×3.0</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-unix-main text-xl">→</span>
+                  <span>Compete for the <strong className="text-unix-accent">TOP SPOT</strong> on the leaderboard!</span>
+                </li>
               </ul>
             </section>
 
-            <section>
-              <h2 className="text-xl font-semibold text-unix-main mb-3">Test Modes</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-unix-bg rounded p-4">
-                  <h3 className="font-semibold text-unix-sub mb-2">⏱️ Time Mode</h3>
-                  <p className="text-sm">Type as many words as possible within the time limit (15, 30, 60, or 120 seconds)</p>
-                </div>
-                <div className="bg-unix-bg rounded p-4">
-                  <h3 className="font-semibold text-unix-sub mb-2">📝 Words Mode</h3>
-                  <p className="text-sm">Type a specific number of words (10, 25, 50, or 100) as quickly as possible</p>
-                </div>
+            <section className="grid grid-cols-2 gap-4">
+              <div className="glass-effect rounded-xl p-5 border border-unix-success/30">
+                <div className="text-3xl mb-2">⏱️</div>
+                <h3 className="font-bold text-unix-success mb-2">Quick Mode</h3>
+                <p className="text-sm text-unix-text/80">30-60 seconds of intense typing!</p>
+              </div>
+              <div className="glass-effect rounded-xl p-5 border border-unix-accent/30">
+                <div className="text-3xl mb-2">🏆</div>
+                <h3 className="font-bold text-unix-accent mb-2">High Score</h3>
+                <p className="text-sm text-unix-text/80">Beat the top developers!</p>
               </div>
             </section>
 
-            <section>
-              <h2 className="text-xl font-semibold text-unix-main mb-3">Visual Indicators</h2>
-              <ul className="space-y-2 list-disc list-inside">
-                <li><span className="text-unix-main">Green text</span>: Correct characters</li>
-                <li><span className="text-unix-error">Red text with background</span>: Incorrect characters</li>
-                <li><span className="text-unix-sub">Gray text</span>: Words to type</li>
-                <li><span className="border-b-2 border-unix-main">Underlined</span>: Current word being typed</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold text-unix-main mb-3">Tips</h2>
-              <ul className="space-y-2 list-disc list-inside">
-                <li>Focus on accuracy first, speed will come with practice</li>
-                <li>Don't correct mistakes - just keep typing</li>
-                <li>Take a moment to look at the word before typing it</li>
-                <li>Use the restart button anytime to reset the test</li>
-              </ul>
-            </section>
+            <div className="bg-gradient-to-r from-unix-main/20 to-unix-accent/20 rounded-xl p-4 border border-unix-main/30">
+              <p className="text-center text-base">
+                <strong className="text-unix-main">Pro Tip:</strong> Build long streaks for massive bonus points! ⚡
+              </p>
+            </div>
           </div>
 
-          <div className="mt-8 flex gap-4">
+          <div className="mt-8">
             <button
               onClick={handleInstructionsDismiss}
-              className="flex-1 px-8 py-4 bg-unix-main text-unix-bg rounded-lg hover:bg-unix-sub transition-colors font-semibold text-lg min-h-[48px]"
+              className="w-full px-10 py-6 bg-gradient-to-r from-unix-main to-unix-accent text-white rounded-2xl hover:shadow-tech-lg transition-all duration-300 font-bold text-2xl min-h-[60px] transform hover:scale-105"
               aria-label="Start typing test"
             >
-              Start Typing
+              🚀 START GAME
             </button>
-            <button
-              onClick={() => {
-                handleInstructionsDismiss();
-                inputRef.current?.focus();
-              }}
-              className="px-8 py-4 bg-unix-sub-alt text-unix-text rounded-lg hover:bg-unix-sub transition-colors font-semibold text-lg min-h-[48px] min-w-[120px]"
-              aria-label="Show instructions again later"
-            >
-              Help
-            </button>
+            <p className="text-center text-unix-sub text-sm mt-4">
+              Press any key to begin instantly!
+            </p>
           </div>
         </div>
       </div>
@@ -292,50 +388,50 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8">
+    <div className="w-full max-w-5xl mx-auto space-y-8">
       {/* Help Button */}
       <div className="flex justify-end">
         <button
           onClick={() => setShowInstructions(true)}
-          className="px-6 py-3 bg-unix-sub-alt text-unix-sub rounded-lg hover:bg-unix-sub transition-colors text-sm min-h-[44px] min-w-[44px]"
+          className="px-5 py-2.5 glass-effect text-unix-sub hover:text-unix-main rounded-xl transition-all duration-200 text-sm font-medium border border-unix-border/50 hover:border-unix-main/50 min-h-[44px] min-w-[44px]"
           aria-label="Show instructions and help"
         >
-          ❓ Help
+          <span className="mr-2">?</span>Help
         </button>
       </div>
 
       {/* Test Configuration */}
-      <div className="flex items-center justify-center gap-8 text-sm" role="group" aria-label="Test configuration">
-        <div className="flex gap-2" role="radiogroup" aria-labelledby="mode-label">
+      <div className="flex items-center justify-center gap-6 text-sm" role="group" aria-label="Test configuration">
+        <div className="flex gap-2 glass-effect p-1 rounded-xl" role="radiogroup" aria-labelledby="mode-label">
           <span id="mode-label" className="sr-only">Test mode</span>
           <button
             onClick={() => {setMode("time"); resetTest();}}
-            className={`px-6 py-3 rounded-lg min-h-[44px] min-w-[44px] ${mode === "time" ? "bg-unix-main text-unix-bg" : "bg-unix-sub-alt text-unix-sub"}`}
+            className={`px-6 py-2.5 rounded-lg min-h-[44px] min-w-[44px] font-semibold transition-all duration-200 ${mode === "time" ? "bg-unix-main text-white shadow-tech" : "text-unix-sub hover:text-unix-text"}`}
             role="radio"
             aria-checked={mode === "time"}
             aria-label="Time mode - type for a set duration"
           >
-            time
+            Time
           </button>
           <button
             onClick={() => {setMode("words"); resetTest();}}
-            className={`px-6 py-3 rounded-lg min-h-[44px] min-w-[44px] ${mode === "words" ? "bg-unix-main text-unix-bg" : "bg-unix-sub-alt text-unix-sub"}`}
+            className={`px-6 py-2.5 rounded-lg min-h-[44px] min-w-[44px] font-semibold transition-all duration-200 ${mode === "words" ? "bg-unix-main text-white shadow-tech" : "text-unix-sub hover:text-unix-text"}`}
             role="radio"
             aria-checked={mode === "words"}
             aria-label="Words mode - type a set number of words"
           >
-            words
+            Words
           </button>
         </div>
 
         {mode === "time" ? (
-          <div className="flex gap-2" role="radiogroup" aria-labelledby="time-label">
+          <div className="flex gap-2 glass-effect p-1 rounded-xl" role="radiogroup" aria-labelledby="time-label">
             <span id="time-label" className="sr-only">Time limit in seconds</span>
             {[15, 30, 60, 120].map((time) => (
               <button
                 key={time}
                 onClick={() => {setTimeLimit(time); resetTest();}}
-                className={`px-6 py-3 rounded-lg min-h-[44px] min-w-[44px] ${timeLimit === time ? "bg-unix-main text-unix-bg" : "bg-unix-sub-alt text-unix-sub"}`}
+                className={`px-5 py-2.5 rounded-lg min-h-[44px] min-w-[60px] font-semibold transition-all duration-200 ${timeLimit === time ? "bg-unix-main text-white shadow-tech" : "text-unix-sub hover:text-unix-text"}`}
                 role="radio"
                 aria-checked={timeLimit === time}
                 aria-label={`${time} seconds`}
@@ -345,13 +441,13 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
             ))}
           </div>
         ) : (
-          <div className="flex gap-2" role="radiogroup" aria-labelledby="words-label">
+          <div className="flex gap-2 glass-effect p-1 rounded-xl" role="radiogroup" aria-labelledby="words-label">
             <span id="words-label" className="sr-only">Number of words</span>
             {[10, 25, 50, 100].map((count) => (
               <button
                 key={count}
                 onClick={() => {setWordCount(count); resetTest();}}
-                className={`px-6 py-3 rounded-lg min-h-[44px] min-w-[44px] ${wordCount === count ? "bg-unix-main text-unix-bg" : "bg-unix-sub-alt text-unix-sub"}`}
+                className={`px-5 py-2.5 rounded-lg min-h-[44px] min-w-[60px] font-semibold transition-all duration-200 ${wordCount === count ? "bg-unix-main text-white shadow-tech" : "text-unix-sub hover:text-unix-text"}`}
                 role="radio"
                 aria-checked={wordCount === count}
                 aria-label={`${count} words`}
@@ -363,17 +459,45 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
         )}
       </div>
 
-      {/* Timer Display */}
-      {mode === "time" && isActive && (
-        <div className="text-center text-4xl font-bold text-unix-main" role="timer" aria-live="polite" aria-label={`${timeLeft} seconds remaining`}>
-          {timeLeft}s
-        </div>
-      )}
+      {/* Timer & Combo Display */}
+      <div className="flex items-center justify-center gap-6">
+        {mode === "time" && isActive && (
+          <div className="text-center" role="timer" aria-live="polite" aria-label={`${timeLeft} seconds remaining`}>
+            <div className="inline-block glass-effect px-8 py-4 rounded-2xl border border-unix-main/30">
+              <div className="text-5xl font-bold text-unix-main mono tech-glow">{timeLeft}</div>
+              <div className="text-xs text-unix-sub font-medium mt-1">seconds</div>
+            </div>
+          </div>
+        )}
+
+        {/* Streak Display */}
+        {isActive && streak > 0 && (
+          <div className="text-center animate-pulse">
+            <div className={`inline-block glass-effect px-6 py-3 rounded-2xl border-2 transition-all duration-300 ${
+              streak >= 10 ? 'border-unix-accent tech-glow-strong' : 'border-unix-success/50'
+            }`}>
+              <div className="text-3xl font-bold text-unix-success">🔥 {streak}</div>
+              <div className="text-xs text-unix-sub font-medium mt-1">streak</div>
+            </div>
+          </div>
+        )}
+
+        {/* Combo Multiplier */}
+        {isActive && combo > 1 && (
+          <div className="text-center">
+            <div className="inline-block glass-effect px-6 py-3 rounded-2xl border-2 border-unix-accent tech-glow">
+              <div className="text-3xl font-bold text-unix-accent">×{combo.toFixed(1)}</div>
+              <div className="text-xs text-unix-sub font-medium mt-1">combo</div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Words Display */}
       <div className="relative">
         <div
-          className="text-2xl leading-relaxed flex flex-wrap gap-2 p-8 bg-unix-sub-alt rounded-lg min-h-[200px]"
+          ref={wordsContainerRef}
+          className="text-2xl mono leading-relaxed flex flex-wrap gap-3 p-10 glass-effect rounded-2xl min-h-[240px] border border-unix-border/50"
           role="application"
           aria-label="Typing test words"
           aria-live="polite"
@@ -382,6 +506,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
           {words.slice(0, Math.min(currentWordIndex + 20, words.length)).map((word, wordIndex) => (
             <div
               key={wordIndex}
+              ref={wordIndex === currentWordIndex ? currentWordRef : null}
               className={`${getWordClass(wordIndex)} transition-colors relative`}
               aria-label={
                 wordIndex < currentWordIndex
@@ -435,14 +560,43 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
         {/* Caret */}
         {isActive && (
           <div
-            className="absolute top-10 left-10 w-0.5 h-8 bg-unix-main animate-pulse"
+            className="absolute w-0.5 h-8 bg-unix-main animate-pulse transition-all duration-100"
             style={{
-              transform: `translateX(${currentInput.length * 14}px)`
+              top: `${caretPosition.top + 8}px`,
+              left: `${caretPosition.left + 8}px`
             }}
             aria-hidden="true"
           />
         )}
+
+        {/* Particle Effects */}
+        {particles.map((particle) => (
+          <div
+            key={particle.id}
+            className="absolute pointer-events-none animate-bounce"
+            style={{
+              left: `${particle.x}px`,
+              top: `${particle.y}px`,
+              animation: 'float-up 1s ease-out forwards',
+            }}
+          >
+            <span className="text-2xl">✨</span>
+          </div>
+        ))}
       </div>
+
+      <style jsx>{`
+        @keyframes float-up {
+          0% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+          100% {
+            opacity: 0;
+            transform: translateY(-50px) scale(1.5);
+          }
+        }
+      `}</style>
 
       {/* Input Field */}
       <input
@@ -450,7 +604,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
         type="text"
         value={currentInput}
         onChange={handleInputChange}
-        className="w-full p-4 text-xl bg-unix-sub-alt text-unix-text rounded-lg focus:outline-none focus:ring-2 focus:ring-unix-main"
+        className="w-full p-5 text-xl mono glass-effect text-unix-text rounded-2xl focus:outline-none focus:ring-2 focus:ring-unix-main border border-unix-border/50 focus:border-unix-main/50 transition-all duration-200"
         placeholder={isActive ? "Type the words above..." : "Click here to start typing..."}
         disabled={!isActive && currentWordIndex >= (mode === "words" ? wordCount : words.length)}
         aria-label="Type the words shown above"
@@ -461,16 +615,16 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       </div>
 
       {/* Stats Display */}
-      <div className="flex justify-center gap-8 text-sm text-unix-sub" role="status" aria-live="polite" aria-atomic="true">
-        <div aria-label={`Progress: ${currentWordIndex} of ${mode === "words" ? wordCount : "unlimited"} words`}>
-          Words: {currentWordIndex}/{mode === "words" ? wordCount : "∞"}
+      <div className="flex justify-center gap-8 text-sm font-medium" role="status" aria-live="polite" aria-atomic="true">
+        <div className="glass-effect px-4 py-2 rounded-lg border border-unix-border/30" aria-label={`Progress: ${currentWordIndex} of ${mode === "words" ? wordCount : "unlimited"} words`}>
+          <span className="text-unix-sub">Words:</span> <span className="text-unix-text ml-1">{currentWordIndex}/{mode === "words" ? wordCount : "∞"}</span>
         </div>
-        <div aria-label={`${typedWords.length} words typed`}>
-          Typed: {typedWords.length}
+        <div className="glass-effect px-4 py-2 rounded-lg border border-unix-border/30" aria-label={`${typedWords.length} words typed`}>
+          <span className="text-unix-sub">Typed:</span> <span className="text-unix-text ml-1">{typedWords.length}</span>
         </div>
         {isActive && startTime && (typedWords.length > 0 || currentInput.length > 0) && (
           <>
-            <div aria-label={`Current speed: ${(() => {
+            <div className="glass-effect px-4 py-2 rounded-lg border border-unix-main/30 tech-glow" aria-label={`Current speed: ${(() => {
               const currentTypedWords = [...typedWords];
               if (currentInput.trim()) {
                 currentTypedWords.push(currentInput.trim());
@@ -481,7 +635,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
               const { wpm } = calculateWPM(chars, Math.max(duration, 0.01));
               return wpm;
             })()} words per minute`}>
-              WPM: {(() => {
+              <span className="text-unix-sub">WPM:</span> <span className="text-unix-main font-bold ml-1">{(() => {
                 const currentTypedWords = [...typedWords];
                 if (currentInput.trim()) {
                   currentTypedWords.push(currentInput.trim());
@@ -491,9 +645,9 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
                 const duration = (Date.now() - startTime) / 1000;
                 const { wpm } = calculateWPM(chars, Math.max(duration, 0.01));
                 return wpm;
-              })()}
+              })()}</span>
             </div>
-            <div aria-label={`Current accuracy: ${(() => {
+            <div className="glass-effect px-4 py-2 rounded-lg border border-unix-success/30" aria-label={`Current accuracy: ${(() => {
               const currentTypedWords = [...typedWords];
               if (currentInput.trim()) {
                 currentTypedWords.push(currentInput.trim());
@@ -503,7 +657,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
               const accuracy = calculateAccuracy(chars);
               return Math.round(accuracy);
             })()} percent`}>
-              Acc: {(() => {
+              <span className="text-unix-sub">Acc:</span> <span className="text-unix-success font-bold ml-1">{(() => {
                 const currentTypedWords = [...typedWords];
                 if (currentInput.trim()) {
                   currentTypedWords.push(currentInput.trim());
@@ -512,7 +666,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
                 const chars = countChars(currentTypedWords, targetWords);
                 const accuracy = calculateAccuracy(chars);
                 return Math.round(accuracy);
-              })()}%
+              })()}%</span>
             </div>
           </>
         )}
@@ -522,10 +676,10 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       <div className="flex justify-center">
         <button
           onClick={resetTest}
-          className="px-8 py-4 bg-unix-sub-alt text-unix-main rounded-lg hover:bg-unix-main hover:text-unix-bg transition-colors font-semibold min-h-[48px] min-w-[120px]"
+          className="px-10 py-4 glass-effect text-unix-main rounded-xl hover:bg-unix-main hover:text-white transition-all duration-200 font-semibold border border-unix-main/30 hover:border-unix-main tech-glow min-h-[48px] min-w-[120px]"
           aria-label="Restart the typing test"
         >
-          restart
+          ↻ Restart
         </button>
       </div>
     </div>

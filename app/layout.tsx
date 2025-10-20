@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "UnixType | Professional Typing Performance Platform",
-  description: "Enterprise-grade typing performance measurement and analytics platform designed for professionals who demand precision.",
+  title: "DevType Challenge | Powered by Unixdev",
+  description: "Interactive typing game for developers at tech events. Type code terms, build streaks, unlock combos, and compete on the leaderboard! Powered by Unixdev.",
 };
 
 export default function RootLayout({

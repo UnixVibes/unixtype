@@ -27,16 +27,16 @@ UnixType is an enterprise-grade typing performance measurement and analytics pla
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Run development server
-npm run dev
+pnpm dev
 
 # Build for production
-npm run build
+pnpm build
 
 # Start production server
-npm start
+pnpm start
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to start typing!

@@ -10,6 +10,7 @@ export interface TestResult {
   mode: string;
   mode2: string;
   language: string;
+  maxStreak?: number;
 }
 
 export interface LeaderboardScore {

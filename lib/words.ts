@@ -1,32 +1,84 @@
-// Common English words for typing practice
-export const commonWords = [
-  "the", "be", "to", "of", "and", "a", "in", "that", "have", "I",
-  "it", "for", "not", "on", "with", "he", "as", "you", "do", "at",
-  "this", "but", "his", "by", "from", "they", "we", "say", "her", "she",
-  "or", "an", "will", "my", "one", "all", "would", "there", "their", "what",
-  "so", "up", "out", "if", "about", "who", "get", "which", "go", "me",
-  "when", "make", "can", "like", "time", "no", "just", "him", "know", "take",
-  "people", "into", "year", "your", "good", "some", "could", "them", "see", "other",
-  "than", "then", "now", "look", "only", "come", "its", "over", "think", "also",
-  "back", "after", "use", "two", "how", "our", "work", "first", "well", "way",
-  "even", "new", "want", "because", "any", "these", "give", "day", "most", "us",
-  "is", "was", "are", "been", "has", "had", "were", "said", "did", "having",
-  "may", "should", "could", "would", "might", "must", "shall", "can", "will", "being",
-  "very", "through", "where", "much", "before", "right", "too", "means", "old", "great",
-  "man", "world", "here", "thing", "every", "own", "same", "another", "need", "three",
-  "high", "small", "large", "such", "follow", "act", "why", "ask", "change", "went",
-  "light", "kind", "off", "need", "house", "picture", "try", "again", "animal", "point",
-  "mother", "world", "near", "build", "self", "earth", "father", "head", "stand", "own",
-  "page", "should", "country", "found", "answer", "school", "grow", "study", "still", "learn",
-  "plant", "cover", "food", "sun", "four", "between", "state", "keep", "eye", "never",
-  "last", "let", "thought", "city", "tree", "cross", "farm", "hard", "start", "might",
+// Developer and tech-themed words for interactive booth game
+export const devWords = [
+  // Programming Languages
+  "javascript", "typescript", "python", "java", "kotlin", "swift", "rust", "golang",
+  "ruby", "php", "csharp", "cpp", "scala", "dart", "elixir", "clojure",
+
+  // Framework & Libraries
+  "react", "vue", "angular", "nextjs", "nuxt", "svelte", "redux", "express",
+  "django", "flask", "spring", "laravel", "rails", "nodejs", "deno", "astro",
+
+  // Cloud & DevOps
+  "docker", "kubernetes", "aws", "azure", "gcp", "terraform", "ansible", "jenkins",
+  "gitlab", "github", "bitbucket", "circleci", "nginx", "apache", "heroku", "vercel",
+
+  // Database & Storage
+  "mongodb", "postgresql", "mysql", "redis", "elasticsearch", "dynamodb", "firebase",
+  "supabase", "prisma", "graphql", "restapi", "grpc", "kafka", "rabbitmq",
+
+  // Programming Concepts
+  "function", "class", "interface", "async", "await", "promise", "callback", "closure",
+  "recursion", "algorithm", "datastructure", "api", "json", "xml", "yaml", "regex",
+  "variable", "constant", "array", "object", "string", "boolean", "integer", "float",
+  "loop", "iterate", "map", "filter", "reduce", "sort", "search", "binary",
+
+  // Development Terms
+  "debug", "compile", "deploy", "build", "test", "refactor", "optimize", "profile",
+  "commit", "push", "pull", "merge", "branch", "fork", "clone", "fetch",
+  "package", "module", "import", "export", "namespace", "component", "hook", "state",
+
+  // Web & Mobile
+  "frontend", "backend", "fullstack", "responsive", "mobile", "progressive", "native",
+  "hybrid", "webpack", "vite", "babel", "eslint", "prettier", "tailwind", "sass",
+
+  // AI & ML
+  "machine", "learning", "neural", "network", "model", "training", "dataset", "tensor",
+  "pytorch", "tensorflow", "keras", "huggingface", "openai", "chatgpt", "claude",
+
+  // Security & Auth
+  "security", "encryption", "jwt", "oauth", "authentication", "authorization", "token",
+  "hash", "salt", "https", "ssl", "tls", "firewall", "vulnerability", "penetration",
+
+  // Agile & PM
+  "agile", "scrum", "sprint", "kanban", "jira", "backlog", "standup", "retrospective",
+  "epic", "story", "ticket", "milestone", "release", "deploy", "hotfix", "bugfix",
+
+  // Short code snippets
+  "const", "let", "var", "if", "else", "for", "while", "switch", "case", "break",
+  "return", "throw", "try", "catch", "finally", "new", "this", "super", "extends",
+  "public", "private", "static", "void", "null", "undefined", "true", "false",
 ];
+
+export const commonWords = devWords;
 
 export function generateWords(count: number): string[] {
   const words: string[] = [];
+  const usedIndexes = new Set<number>();
+
+  // Ensure variety by not repeating words too close together
   for (let i = 0; i < count; i++) {
-    const randomIndex = Math.floor(Math.random() * commonWords.length);
-    words.push(commonWords[randomIndex]);
+    let randomIndex: number;
+    let attempts = 0;
+
+    do {
+      randomIndex = Math.floor(Math.random() * devWords.length);
+      attempts++;
+    } while (usedIndexes.has(randomIndex) && attempts < 50);
+
+    usedIndexes.add(randomIndex);
+    words.push(devWords[randomIndex]);
+
+    // Clear set every 20 words to allow repetition but maintain variety
+    if (usedIndexes.size > 20) {
+      usedIndexes.clear();
+    }
   }
+
   return words;
+}
+
+export function getDifficulty(word: string): "easy" | "medium" | "hard" {
+  if (word.length <= 4) return "easy";
+  if (word.length <= 8) return "medium";
+  return "hard";
 }
