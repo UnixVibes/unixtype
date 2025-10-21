@@ -7,6 +7,7 @@ import TypingTest from "@/components/TypingTest";
 import ResultScreen from "@/components/ResultScreen";
 import { TestResult } from "@/types";
 import { sounds } from "@/lib/sounds";
+import { advancedSounds } from "@/lib/advanced-sounds";
 import { getRank } from "@/lib/ranks";
 
 export default function Home() {
@@ -55,6 +56,7 @@ export default function Home() {
     const newState = !soundEnabled;
     setSoundEnabled(newState);
     sounds.setEnabled(newState);
+    advancedSounds.setEnabled(newState);
   };
 
   return (

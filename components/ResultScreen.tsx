@@ -11,6 +11,7 @@ import Leaderboard from './Leaderboard';
 import ShareCard from './ShareCard';
 import LiveStats from './LiveStats';
 import { getQuoteForPerformance } from '@/lib/developer-quotes';
+import { advancedSounds } from '@/lib/advanced-sounds';
 import { useGSAP } from '@gsap/react';
 import * as gsapAnimations from '@/lib/gsap-animations';
 
@@ -51,6 +52,9 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
     // Generate fortune cookie quote based on performance
     const quote = getQuoteForPerformance(result.wpm);
     setFortuneQuote(quote);
+
+    // Play epic victory fanfare!
+    advancedSounds.playVictoryFanfareWithChoir();
   }, [result.wpm]);
 
   // GSAP: Animate result screen entrance
