@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Flame, Zap, RotateCcw, HelpCircle, Timer, Hash } from "lucide-react";
 import { generateWords } from "@/lib/words";
 import { TestResult } from "@/types";
 import { countChars, calculateWPM, calculateAccuracy } from "@/lib/test-stats";
@@ -40,6 +42,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
   const wordsContainerRef = useRef<HTMLDivElement>(null);
   const currentWordRef = useRef<HTMLDivElement>(null);
   const [caretPosition, setCaretPosition] = useState({ top: 0, left: 0 });
+  const shouldEndTestRef = useRef(false);
 
   useEffect(() => {
     resetTest();
@@ -75,67 +78,13 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     }
   }, [currentInput, currentWordIndex, isActive]);
 
-  const resetTest = useCallback(() => {
-    const newWords = generateWords(mode === "words" ? wordCount : 200);
-    setWords(newWords);
-    setCurrentWordIndex(0);
-    setCurrentInput("");
-    setStartTime(null);
-    setIsActive(false);
-    setTypedWords([]);
-    setTimeLeft(mode === "time" ? timeLimit : 0);
-    setWpmHistory([]);
-    setStreak(0);
-    setMaxStreak(0);
-    setCombo(1);
-    setParticles([]);
-
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (wpmIntervalRef.current) clearInterval(wpmIntervalRef.current);
-  }, [mode, timeLimit, wordCount]);
-
-  const startTest = useCallback(() => {
-    if (!isActive) {
-      const now = Date.now();
-      setIsActive(true);
-      setStartTime(now);
-
-      if (mode === "time") {
-        timerRef.current = setInterval(() => {
-          setTimeLeft((prev) => {
-            if (prev <= 1) {
-              endTest();
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      }
-
-      // Track WPM every second
-      wpmIntervalRef.current = setInterval(() => {
-        setWpmHistory(prev => {
-          const currentTypedWords = [...typedWords];
-          if (currentInput.trim()) {
-            currentTypedWords.push(currentInput.trim());
-          }
-          const targetWords = words.slice(0, currentTypedWords.length);
-          const chars = countChars(currentTypedWords, targetWords);
-          const elapsed = (Date.now() - now) / 1000 / 60;
-          if (elapsed > 0 && chars.allCorrectChars > 0) {
-            const currentWpm = Math.round((chars.allCorrectChars / 5) / elapsed);
-            return [...prev, currentWpm];
-          }
-          return prev;
-        });
-      }, 1000);
-    }
-  }, [isActive, mode]);
-
   const endTest = useCallback(() => {
+    console.log("endTest called, typedWords:", typedWords.length, "currentInput:", currentInput);
+
     if (timerRef.current) clearInterval(timerRef.current);
     if (wpmIntervalRef.current) clearInterval(wpmIntervalRef.current);
     setIsActive(false);
+    shouldEndTestRef.current = false;
 
     const endTime = Date.now();
     const duration = startTime ? (endTime - startTime) / 1000 : 1;
@@ -184,11 +133,77 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     onComplete(result);
   }, [startTime, typedWords, currentInput, words, mode, timeLimit, wordCount, wpmHistory, maxStreak, onComplete]);
 
+  const resetTest = useCallback(() => {
+    const newWords = generateWords(mode === "words" ? wordCount : 200);
+    setWords(newWords);
+    setCurrentWordIndex(0);
+    setCurrentInput("");
+    setStartTime(null);
+    setIsActive(false);
+    setTypedWords([]);
+    setTimeLeft(mode === "time" ? timeLimit : 0);
+    setWpmHistory([]);
+    setStreak(0);
+    setMaxStreak(0);
+    setCombo(1);
+    setParticles([]);
+
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (wpmIntervalRef.current) clearInterval(wpmIntervalRef.current);
+  }, [mode, timeLimit, wordCount]);
+
+  const startTest = useCallback(() => {
+    if (!isActive) {
+      const now = Date.now();
+      setIsActive(true);
+      setStartTime(now);
+      shouldEndTestRef.current = false;
+
+      if (mode === "time") {
+        timerRef.current = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              shouldEndTestRef.current = true;
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+
+      // Track WPM every second
+      wpmIntervalRef.current = setInterval(() => {
+        setWpmHistory(prev => {
+          const currentTypedWords = [...typedWords];
+          if (currentInput.trim()) {
+            currentTypedWords.push(currentInput.trim());
+          }
+          const targetWords = words.slice(0, currentTypedWords.length);
+          const chars = countChars(currentTypedWords, targetWords);
+          const elapsed = (Date.now() - now) / 1000 / 60;
+          if (elapsed > 0 && chars.allCorrectChars > 0) {
+            const currentWpm = Math.round((chars.allCorrectChars / 5) / elapsed);
+            return [...prev, currentWpm];
+          }
+          return prev;
+        });
+      }, 1000);
+    }
+  }, [isActive, mode]);
+
   useEffect(() => {
     if (mode === "words" && currentWordIndex >= wordCount && isActive) {
       endTest();
     }
   }, [currentWordIndex, wordCount, mode, isActive, endTest]);
+
+  // Watch for timer end
+  useEffect(() => {
+    if (shouldEndTestRef.current && isActive) {
+      console.log("Timer ended, calling endTest");
+      endTest();
+    }
+  }, [timeLeft, isActive, endTest]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -314,10 +329,22 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
 
   if (showInstructions) {
     return (
-      <div className="w-full max-w-2xl mx-auto space-y-8">
+      <motion.div
+        className="w-full max-w-2xl mx-auto space-y-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+      >
         <div className="glass-effect rounded-2xl p-8 shadow-2xl" role="dialog" aria-labelledby="instructions-title" aria-modal="true">
           <div className="text-center mb-8">
-            <div className="text-6xl mb-4">⚡</div>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.2, type: "spring", stiffness: 200 }}
+              className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-unix-main to-unix-accent mb-4"
+            >
+              <Zap className="w-12 h-12 text-white" strokeWidth={2.5} />
+            </motion.div>
             <h1 id="instructions-title" className="text-5xl font-bold bg-gradient-to-r from-unix-main to-unix-accent bg-clip-text text-transparent mb-3">
               DevType Challenge
             </h1>
@@ -351,54 +378,82 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
             </section>
 
             <section className="grid grid-cols-2 gap-4">
-              <div className="glass-effect rounded-xl p-5 border border-unix-success/30">
-                <div className="text-3xl mb-2">⏱️</div>
+              <motion.div
+                className="glass-effect rounded-xl p-5 border border-unix-success/30"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.4 }}
+              >
+                <Timer className="w-8 h-8 text-unix-success mb-2" strokeWidth={2.5} />
                 <h3 className="font-bold text-unix-success mb-2">Quick Mode</h3>
                 <p className="text-sm text-unix-text/80">30-60 seconds of intense typing!</p>
-              </div>
-              <div className="glass-effect rounded-xl p-5 border border-unix-accent/30">
-                <div className="text-3xl mb-2">🏆</div>
+              </motion.div>
+              <motion.div
+                className="glass-effect rounded-xl p-5 border border-unix-accent/30"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.4 }}
+              >
+                <Zap className="w-8 h-8 text-unix-accent mb-2" strokeWidth={2.5} />
                 <h3 className="font-bold text-unix-accent mb-2">High Score</h3>
                 <p className="text-sm text-unix-text/80">Beat the top developers!</p>
-              </div>
+              </motion.div>
             </section>
 
-            <div className="bg-gradient-to-r from-unix-main/20 to-unix-accent/20 rounded-xl p-4 border border-unix-main/30">
-              <p className="text-center text-base">
-                <strong className="text-unix-main">Pro Tip:</strong> Build long streaks for massive bonus points! ⚡
+            <motion.div
+              className="bg-gradient-to-r from-unix-main/20 to-unix-accent/20 rounded-xl p-4 border border-unix-main/30"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.5 }}
+            >
+              <p className="text-center text-base flex items-center justify-center gap-2">
+                <Flame className="w-5 h-5 text-unix-main" strokeWidth={2.5} />
+                <strong className="text-unix-main">Pro Tip:</strong> Build long streaks for massive bonus points!
               </p>
-            </div>
+            </motion.div>
           </div>
 
           <div className="mt-8">
-            <button
+            <motion.button
               onClick={handleInstructionsDismiss}
-              className="w-full px-10 py-6 bg-gradient-to-r from-unix-main to-unix-accent text-white rounded-2xl hover:shadow-tech-lg transition-all duration-300 font-bold text-2xl min-h-[60px] transform hover:scale-105"
+              className="w-full px-10 py-6 bg-gradient-to-r from-unix-main to-unix-accent text-white rounded-2xl font-bold text-2xl min-h-[60px] flex items-center justify-center gap-3"
               aria-label="Start typing test"
+              whileHover={{ scale: 1.02, boxShadow: "0 20px 50px rgba(20, 184, 166, 0.4)" }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ duration: 0.2 }}
             >
-              🚀 START GAME
-            </button>
+              <Zap className="w-6 h-6" strokeWidth={2.5} />
+              START GAME
+            </motion.button>
             <p className="text-center text-unix-sub text-sm mt-4">
               Press any key to begin instantly!
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-8">
       {/* Help Button */}
-      <div className="flex justify-end">
-        <button
+      <motion.div
+        className="flex justify-end"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <motion.button
           onClick={() => setShowInstructions(true)}
-          className="px-5 py-2.5 glass-effect text-unix-sub hover:text-unix-main rounded-xl transition-all duration-200 text-sm font-medium border border-unix-border/50 hover:border-unix-main/50 min-h-[44px] min-w-[44px]"
+          className="px-5 py-2.5 glass-effect text-unix-sub hover:text-unix-main rounded-xl transition-all duration-200 text-sm font-medium border border-unix-border/50 hover:border-unix-main/50 min-h-[44px] min-w-[44px] flex items-center gap-2"
           aria-label="Show instructions and help"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
         >
-          <span className="mr-2">?</span>Help
-        </button>
-      </div>
+          <HelpCircle className="w-4 h-4" strokeWidth={2.5} />
+          Help
+        </motion.button>
+      </motion.div>
 
       {/* Test Configuration */}
       <div className="flex items-center justify-center gap-6 text-sm" role="group" aria-label="Test configuration">
@@ -461,36 +516,75 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
 
       {/* Timer & Combo Display */}
       <div className="flex items-center justify-center gap-6">
-        {mode === "time" && isActive && (
-          <div className="text-center" role="timer" aria-live="polite" aria-label={`${timeLeft} seconds remaining`}>
-            <div className="inline-block glass-effect px-8 py-4 rounded-2xl border border-unix-main/30">
-              <div className="text-5xl font-bold text-unix-main mono tech-glow">{timeLeft}</div>
-              <div className="text-xs text-unix-sub font-medium mt-1">seconds</div>
-            </div>
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {mode === "time" && isActive && (
+            <motion.div
+              key="timer"
+              className="text-center"
+              role="timer"
+              aria-live="polite"
+              aria-label={`${timeLeft} seconds remaining`}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <div className="inline-block glass-effect px-8 py-4 rounded-2xl border border-unix-main/30">
+                <div className="flex items-center gap-2 mb-1">
+                  <Timer className="w-5 h-5 text-unix-main" strokeWidth={2.5} />
+                  <div className="text-5xl font-bold text-unix-main mono tech-glow">{timeLeft}</div>
+                </div>
+                <div className="text-xs text-unix-sub font-medium">seconds</div>
+              </div>
+            </motion.div>
+          )}
 
-        {/* Streak Display */}
-        {isActive && streak > 0 && (
-          <div className="text-center animate-pulse">
-            <div className={`inline-block glass-effect px-6 py-3 rounded-2xl border-2 transition-all duration-300 ${
-              streak >= 10 ? 'border-unix-accent tech-glow-strong' : 'border-unix-success/50'
-            }`}>
-              <div className="text-3xl font-bold text-unix-success">🔥 {streak}</div>
-              <div className="text-xs text-unix-sub font-medium mt-1">streak</div>
-            </div>
-          </div>
-        )}
+          {/* Streak Display */}
+          {isActive && streak > 0 && (
+            <motion.div
+              key={`streak-${streak}`}
+              className="text-center"
+              initial={{ opacity: 0, scale: 0.5, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            >
+              <motion.div
+                className={`inline-block glass-effect px-6 py-3 rounded-2xl border-2 ${
+                  streak >= 10 ? 'border-unix-accent tech-glow-strong' : 'border-unix-success/50'
+                }`}
+                animate={{
+                  scale: streak >= 10 ? [1, 1.05, 1] : 1
+                }}
+                transition={{ duration: 0.5, repeat: streak >= 10 ? Infinity : 0, repeatDelay: 1 }}
+              >
+                <div className="flex items-center gap-2 text-3xl font-bold text-unix-success">
+                  <Flame className="w-6 h-6" strokeWidth={2.5} />
+                  {streak}
+                </div>
+                <div className="text-xs text-unix-sub font-medium mt-1">streak</div>
+              </motion.div>
+            </motion.div>
+          )}
 
-        {/* Combo Multiplier */}
-        {isActive && combo > 1 && (
-          <div className="text-center">
-            <div className="inline-block glass-effect px-6 py-3 rounded-2xl border-2 border-unix-accent tech-glow">
-              <div className="text-3xl font-bold text-unix-accent">×{combo.toFixed(1)}</div>
-              <div className="text-xs text-unix-sub font-medium mt-1">combo</div>
-            </div>
-          </div>
-        )}
+          {/* Combo Multiplier */}
+          {isActive && combo > 1 && (
+            <motion.div
+              key={`combo-${combo}`}
+              className="text-center"
+              initial={{ opacity: 0, scale: 0.5, rotate: -180 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            >
+              <div className="inline-block glass-effect px-6 py-3 rounded-2xl border-2 border-unix-accent tech-glow">
+                <div className="flex items-center gap-2 text-3xl font-bold text-unix-accent">
+                  <Zap className="w-6 h-6" strokeWidth={2.5} />
+                  ×{combo.toFixed(1)}
+                </div>
+                <div className="text-xs text-unix-sub font-medium mt-1">combo</div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Words Display */}
@@ -673,15 +767,23 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       </div>
 
       {/* Restart Button */}
-      <div className="flex justify-center">
-        <button
+      <motion.div
+        className="flex justify-center"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
+        <motion.button
           onClick={resetTest}
-          className="px-10 py-4 glass-effect text-unix-main rounded-xl hover:bg-unix-main hover:text-white transition-all duration-200 font-semibold border border-unix-main/30 hover:border-unix-main tech-glow min-h-[48px] min-w-[120px]"
+          className="px-10 py-4 glass-effect text-unix-main rounded-xl hover:bg-unix-main hover:text-white transition-all duration-200 font-semibold border border-unix-main/30 hover:border-unix-main tech-glow min-h-[48px] min-w-[120px] flex items-center gap-2"
           aria-label="Restart the typing test"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
         >
-          ↻ Restart
-        </button>
-      </div>
+          <RotateCcw className="w-4 h-4" strokeWidth={2.5} />
+          Restart
+        </motion.button>
+      </motion.div>
     </div>
   );
 }

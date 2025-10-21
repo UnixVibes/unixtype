@@ -4,6 +4,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "DevType Challenge | Powered by Unixdev",
   description: "Interactive typing game for developers at tech events. Type code terms, build streaks, unlock combos, and compete on the leaderboard! Powered by Unixdev.",
+  icons: {
+    icon: '/favicon.svg',
+    apple: '/logo.svg',
+  },
 };
 
 export default function RootLayout({

@@ -62,7 +62,24 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
   };
 
   const handleSkipToResults = () => {
-    setPlayerName('Guest');
+    const name = 'Guest';
+    setPlayerName(name);
+
+    const rank = getRank(result.wpm);
+
+    // Save score to leaderboard even when skipping
+    const entry = saveScore({
+      name,
+      wpm: result.wpm,
+      rawWpm: result.rawWpm,
+      accuracy: result.accuracy,
+      consistency: result.consistency,
+      rank: rank.title,
+      rankEmoji: rank.emoji,
+      maxStreak,
+    });
+
+    setSavedEntryId(entry.id);
     setShowNameInput(false);
   };
 
@@ -155,7 +172,39 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
     }
   };
 
-  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+  // Generate a unique shareable URL with player's score data encoded
+  const generateShareableUrl = () => {
+    if (typeof window === 'undefined') return '';
+
+    const scoreData = {
+      name: playerName || 'Guest',
+      wpm: Math.round(result.wpm),
+      accuracy: Math.round(result.accuracy),
+      streak: maxStreak,
+      rank: rank.title,
+      emoji: rank.emoji
+    };
+
+    try {
+      // Encode the score data in the URL (using encodeURIComponent to handle Unicode)
+      const jsonString = JSON.stringify(scoreData);
+      const base64String = btoa(unescape(encodeURIComponent(jsonString)));
+
+      const params = new URLSearchParams({
+        score: base64String
+      });
+
+      const url = `${window.location.origin}?${params.toString()}`;
+      console.log('✅ Generated shareable URL:', url);
+      console.log('📊 Score data:', scoreData);
+      return url;
+    } catch (error) {
+      console.error('❌ Failed to generate shareable URL:', error);
+      return window.location.origin;
+    }
+  };
+
+  const shareableUrl = generateShareableUrl();
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-8">
@@ -251,7 +300,7 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
 
                 {/* QR Code */}
                 <div className="bg-white p-2 rounded-lg">
-                  <QRCodeCanvas value={currentUrl} size={80} level="M" />
+                  <QRCodeCanvas value={shareableUrl} size={80} level="M" />
                 </div>
               </div>
               <p className="text-unix-sub text-xs mt-2">Scan to play • Visit our booth</p>
@@ -330,10 +379,10 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
               navigator.share({
                 title: 'DevType Challenge',
                 text: shareText,
-                url: window.location.href,
+                url: shareableUrl,
               }).catch(() => {});
             } else {
-              navigator.clipboard.writeText(shareText);
+              navigator.clipboard.writeText(`${shareText}\n\n${shareableUrl}`);
               alert('Score copied to clipboard! Share it with your friends! 🎉');
             }
           }}

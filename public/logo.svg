@@ -1,0 +1,74 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle with Gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#14B8A6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06B6D4;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="glowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#14B8A6;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#06B6D4;stop-opacity:0.5" />
+    </linearGradient>
+
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer glow circle -->
+  <circle cx="60" cy="60" r="58" fill="url(#glowGradient)" opacity="0.4"/>
+
+  <!-- Main background circle -->
+  <circle cx="60" cy="60" r="50" fill="url(#bgGradient)"/>
+
+  <!-- Terminal bracket left -->
+  <path d="M 35 35 L 45 35 L 35 45 L 45 55 L 35 55"
+        stroke="white"
+        stroke-width="4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"
+        filter="url(#glow)"/>
+
+  <!-- Terminal bracket right -->
+  <path d="M 85 35 L 75 35 L 85 45 L 75 55 L 85 55"
+        stroke="white"
+        stroke-width="4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"
+        filter="url(#glow)"/>
+
+  <!-- Lightning bolt (speed/energy) -->
+  <g filter="url(#glow)">
+    <path d="M 60 30 L 55 50 L 65 50 L 60 70"
+          stroke="white"
+          stroke-width="4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          fill="none"/>
+    <circle cx="60" cy="50" r="3" fill="white"/>
+  </g>
+
+  <!-- Keyboard keys hint (bottom) -->
+  <g opacity="0.9">
+    <rect x="40" y="75" width="8" height="8" rx="2" fill="white" opacity="0.8"/>
+    <rect x="52" y="75" width="8" height="8" rx="2" fill="white" opacity="0.9"/>
+    <rect x="64" y="75" width="8" height="8" rx="2" fill="white" opacity="1"/>
+    <rect x="76" y="75" width="8" height="8" rx="2" fill="white" opacity="0.9"/>
+  </g>
+
+  <!-- Tech dots pattern (decorative) -->
+  <g opacity="0.3">
+    <circle cx="30" cy="60" r="2" fill="white"/>
+    <circle cx="90" cy="60" r="2" fill="white"/>
+    <circle cx="60" cy="25" r="2" fill="white"/>
+    <circle cx="60" cy="90" r="2" fill="white"/>
+  </g>
+</svg>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ArrowLeft, FlaskConical } from "lucide-react";
 import LocalLeaderboard from "@/lib/local-leaderboard";
 import { LeaderboardScore } from "@/types";
 
@@ -53,9 +54,15 @@ export default function LeaderboardPage() {
             <div className="text-unix-sub text-sm">unix</div>
             <div className="text-unix-main text-2xl font-bold">unixtype</div>
           </div>
-          <div className="text-unix-sub text-sm">
-            <a href="/" className="hover:text-unix-main transition-colors">
-              ← back to test
+          <div className="text-unix-sub text-sm flex items-center gap-4">
+            <a href="/" className="hover:text-unix-main transition-colors flex items-center gap-2">
+              <ArrowLeft className="w-4 h-4" strokeWidth={2.5} />
+              back to test
+            </a>
+            <span className="text-unix-border">|</span>
+            <a href="/testing" className="hover:text-unix-main transition-colors flex items-center gap-2">
+              <FlaskConical className="w-4 h-4" strokeWidth={2.5} />
+              test suite
             </a>
           </div>
         </div>
@@ -208,15 +215,6 @@ export default function LeaderboardPage() {
                 })}
               </div>
             )}
-          </div>
-
-          <div className="text-center">
-            <a 
-              href="/" 
-              className="inline-block px-8 py-4 bg-unix-main text-unix-bg rounded-lg hover:bg-unix-sub transition-colors font-semibold text-lg min-h-[48px]"
-            >
-              Take a Test
-            </a>
           </div>
         </div>
       </main>
