@@ -35,6 +35,8 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
   const [maxStreak, setMaxStreak] = useState(0);
   const [combo, setCombo] = useState(1);
   const [particles, setParticles] = useState<Array<{id: number, x: number, y: number}>>([]);
+  const [personalBest, setPersonalBest] = useState<number>(0);
+  const [showBeatingRecord, setShowBeatingRecord] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -48,12 +50,48 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     resetTest();
   }, [mode, timeLimit, wordCount]);
 
+  // Load personal best from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`unixtype_pb_${mode}_${mode === 'time' ? timeLimit : wordCount}`);
+      if (saved) {
+        setPersonalBest(parseFloat(saved));
+      }
+    }
+  }, [mode, timeLimit, wordCount]);
+
   // Auto-focus input on mount and when instructions are dismissed
   useEffect(() => {
     if (inputRef.current && !showInstructions) {
       inputRef.current.focus();
     }
   }, [showInstructions]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ESC to restart test
+      if (e.key === 'Escape' && !showInstructions) {
+        e.preventDefault();
+        resetTest();
+      }
+
+      // Tab to switch modes (only when not actively typing)
+      if (e.key === 'Tab' && !isActive && !showInstructions) {
+        e.preventDefault();
+        setMode(prev => prev === 'time' ? 'words' : 'time');
+      }
+
+      // Space to dismiss instructions
+      if (e.key === ' ' && showInstructions) {
+        e.preventDefault();
+        handleInstructionsDismiss();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isActive, showInstructions]);
 
   // Update caret position when current word or input changes
   useEffect(() => {
@@ -78,6 +116,27 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       });
     }
   }, [currentInput, currentWordIndex, isActive]);
+
+  // Auto-scroll to keep current word centered
+  useEffect(() => {
+    if (currentWordRef.current && wordsContainerRef.current && isActive) {
+      const container = wordsContainerRef.current;
+      const word = currentWordRef.current;
+
+      // Calculate position to center the current word
+      const containerRect = container.getBoundingClientRect();
+      const wordRect = word.getBoundingClientRect();
+
+      const wordRelativeTop = wordRect.top - containerRect.top + container.scrollTop;
+      const targetScroll = wordRelativeTop - (containerRect.height / 2) + (wordRect.height / 2);
+
+      // Smooth scroll to center the current word
+      container.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth'
+      });
+    }
+  }, [currentWordIndex, isActive]);
 
   const endTest = useCallback(() => {
     console.log("endTest called, typedWords:", typedWords.length, "currentInput:", currentInput);
@@ -128,11 +187,17 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       maxStreak,
     };
 
+    // Save personal best
+    if (typeof window !== 'undefined' && result.wpm > personalBest) {
+      localStorage.setItem(`unixtype_pb_${mode}_${mode === 'time' ? timeLimit : wordCount}`, result.wpm.toString());
+      setPersonalBest(result.wpm);
+    }
+
     // Play test complete sound
     sounds.playTestComplete();
 
     onComplete(result);
-  }, [startTime, typedWords, currentInput, words, mode, timeLimit, wordCount, wpmHistory, maxStreak, onComplete]);
+  }, [startTime, typedWords, currentInput, words, mode, timeLimit, wordCount, wpmHistory, maxStreak, personalBest, onComplete]);
 
   const resetTest = useCallback(() => {
     const newWords = generateWords(mode === "words" ? wordCount : 200);
@@ -294,6 +359,9 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       return words[index] === typedWords[index] ? "text-unix-main" : "text-unix-error";
     } else if (index === currentWordIndex) {
       return "text-unix-text border-b-2 border-unix-main";
+    } else if (index === currentWordIndex + 1) {
+      // Next word preview - subtle highlight
+      return "text-unix-text/70";
     } else {
       return "text-unix-sub";
     }
@@ -592,6 +660,40 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
               </div>
             </motion.div>
           )}
+
+          {/* Personal Best Indicator */}
+          {isActive && startTime && personalBest > 0 && (() => {
+            const currentTypedWords = [...typedWords];
+            if (currentInput.trim()) {
+              currentTypedWords.push(currentInput.trim());
+            }
+            const targetWords = words.slice(0, currentTypedWords.length);
+            const chars = countChars(currentTypedWords, targetWords);
+            const duration = (Date.now() - startTime) / 1000;
+            const { wpm } = calculateWPM(chars, Math.max(duration, 0.01));
+            return wpm > personalBest;
+          })() && (
+            <motion.div
+              key="beating-record"
+              className="text-center"
+              initial={{ opacity: 0, scale: 0.5, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            >
+              <motion.div
+                className="inline-block glass-effect px-6 py-3 rounded-2xl border-2 border-unix-accent tech-glow-strong"
+                animate={{
+                  scale: [1, 1.05, 1]
+                }}
+                transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 0.5 }}
+              >
+                <div className="flex items-center gap-2 text-2xl font-bold text-unix-accent">
+                  🔥 NEW RECORD!
+                </div>
+                <div className="text-xs text-unix-sub font-medium mt-1">beating your best</div>
+              </motion.div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
@@ -599,7 +701,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       <div className="relative">
         <div
           ref={wordsContainerRef}
-          className="text-2xl mono leading-relaxed flex flex-wrap gap-3 p-10 glass-effect rounded-2xl min-h-[240px] border border-unix-border/50"
+          className="text-2xl mono leading-relaxed flex flex-wrap gap-3 p-10 glass-effect rounded-2xl min-h-[240px] max-h-[240px] overflow-y-auto border border-unix-border/50 scroll-smooth"
           role="application"
           aria-label="Typing test words"
           aria-live="polite"
@@ -726,7 +828,17 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
         </div>
         {isActive && startTime && (typedWords.length > 0 || currentInput.length > 0) && (
           <>
-            <div className="glass-effect px-4 py-2 rounded-lg border border-unix-main/30 tech-glow" aria-label={`Current speed: ${(() => {
+            <div className={`glass-effect px-4 py-2 rounded-lg border transition-all duration-300 ${(() => {
+              const currentTypedWords = [...typedWords];
+              if (currentInput.trim()) {
+                currentTypedWords.push(currentInput.trim());
+              }
+              const targetWords = words.slice(0, currentTypedWords.length);
+              const chars = countChars(currentTypedWords, targetWords);
+              const duration = (Date.now() - startTime) / 1000;
+              const { wpm } = calculateWPM(chars, Math.max(duration, 0.01));
+              return wpm > personalBest && personalBest > 0 ? 'border-unix-accent/50 tech-glow-strong' : 'border-unix-main/30 tech-glow';
+            })()}`} aria-label={`Current speed: ${(() => {
               const currentTypedWords = [...typedWords];
               if (currentInput.trim()) {
                 currentTypedWords.push(currentInput.trim());
@@ -737,17 +849,33 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
               const { wpm } = calculateWPM(chars, Math.max(duration, 0.01));
               return wpm;
             })()} words per minute`}>
-              <span className="text-unix-sub">WPM:</span> <span className="text-unix-main font-bold ml-1">{(() => {
-                const currentTypedWords = [...typedWords];
-                if (currentInput.trim()) {
-                  currentTypedWords.push(currentInput.trim());
-                }
-                const targetWords = words.slice(0, currentTypedWords.length);
-                const chars = countChars(currentTypedWords, targetWords);
-                const duration = (Date.now() - startTime) / 1000;
-                const { wpm } = calculateWPM(chars, Math.max(duration, 0.01));
-                return wpm;
-              })()}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-unix-sub">WPM:</span>
+                <span className={`font-bold ${(() => {
+                  const currentTypedWords = [...typedWords];
+                  if (currentInput.trim()) {
+                    currentTypedWords.push(currentInput.trim());
+                  }
+                  const targetWords = words.slice(0, currentTypedWords.length);
+                  const chars = countChars(currentTypedWords, targetWords);
+                  const duration = (Date.now() - startTime) / 1000;
+                  const { wpm } = calculateWPM(chars, Math.max(duration, 0.01));
+                  return wpm > personalBest && personalBest > 0 ? 'text-unix-accent' : 'text-unix-main';
+                })()}`}>{(() => {
+                  const currentTypedWords = [...typedWords];
+                  if (currentInput.trim()) {
+                    currentTypedWords.push(currentInput.trim());
+                  }
+                  const targetWords = words.slice(0, currentTypedWords.length);
+                  const chars = countChars(currentTypedWords, targetWords);
+                  const duration = (Date.now() - startTime) / 1000;
+                  const { wpm } = calculateWPM(chars, Math.max(duration, 0.01));
+                  return wpm;
+                })()}</span>
+                {personalBest > 0 && (
+                  <span className="text-xs text-unix-sub">/ {Math.round(personalBest)} PB</span>
+                )}
+              </div>
             </div>
             <div className="glass-effect px-4 py-2 rounded-lg border border-unix-success/30" aria-label={`Current accuracy: ${(() => {
               const currentTypedWords = [...typedWords];
