@@ -7,6 +7,8 @@ import { generateWords } from "@/lib/words";
 import { TestResult } from "@/types";
 import { countChars, calculateWPM, calculateAccuracy } from "@/lib/test-stats";
 import { sounds } from "@/lib/sounds";
+import { useGSAP } from "@gsap/react";
+import * as gsapAnimations from "@/lib/gsap-animations";
 
 interface TypingTestProps {
   onComplete: (result: TestResult) => void;
@@ -45,6 +47,12 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
   const currentWordRef = useRef<HTMLDivElement>(null);
   const [caretPosition, setCaretPosition] = useState({ top: 0, left: 0 });
   const shouldEndTestRef = useRef(false);
+
+  // GSAP animation refs
+  const animationContainerRef = useRef<HTMLDivElement>(null);
+  const comboRef = useRef<HTMLDivElement>(null);
+  const timerDisplayRef = useRef<HTMLDivElement>(null);
+  const mainContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     resetTest();
@@ -138,6 +146,44 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     }
   }, [currentWordIndex, isActive]);
 
+  // GSAP: Combo multiplier pulse animation
+  useEffect(() => {
+    if (combo > 1 && comboRef.current && isActive) {
+      const intensity = Math.min(combo / 3, 1); // Max at 3x combo
+      gsapAnimations.pulseComboMultiplier(comboRef.current, intensity);
+    } else if (comboRef.current) {
+      gsapAnimations.stopComboPulse(comboRef.current);
+    }
+
+    return () => {
+      if (comboRef.current) {
+        gsapAnimations.stopComboPulse(comboRef.current);
+      }
+    };
+  }, [combo, isActive]);
+
+  // GSAP: Timer countdown urgent animations
+  useEffect(() => {
+    if (mode === 'time' && isActive && timerDisplayRef.current) {
+      if (timeLeft <= 10 && timeLeft > 3) {
+        // Urgent pulse
+        gsapAnimations.pulseTimerUrgent(timerDisplayRef.current);
+      } else if (timeLeft <= 3 && timeLeft > 0 && mainContainerRef.current) {
+        // Final seconds screen shake
+        gsapAnimations.shakeScreenUrgent(mainContainerRef.current);
+      } else if (timerDisplayRef.current) {
+        // Stop animations
+        gsapAnimations.stopTimerAnimations(timerDisplayRef.current, mainContainerRef.current || undefined);
+      }
+    }
+
+    return () => {
+      if (timerDisplayRef.current) {
+        gsapAnimations.stopTimerAnimations(timerDisplayRef.current, mainContainerRef.current || undefined);
+      }
+    };
+  }, [timeLeft, isActive, mode]);
+
   const endTest = useCallback(() => {
     console.log("endTest called, typedWords:", typedWords.length, "currentInput:", currentInput);
 
@@ -191,6 +237,11 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     if (typeof window !== 'undefined' && result.wpm > personalBest) {
       localStorage.setItem(`unixtype_pb_${mode}_${mode === 'time' ? timeLimit : wordCount}`, result.wpm.toString());
       setPersonalBest(result.wpm);
+
+      // GSAP: Personal best breaking celebration!
+      if (animationContainerRef.current) {
+        gsapAnimations.celebrateNewRecord(animationContainerRef.current);
+      }
     }
 
     // Play test complete sound
@@ -321,6 +372,22 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       // Play word complete sound
       sounds.playWordComplete();
 
+      // GSAP: Word completion celebration
+      if (currentWordRef.current) {
+        gsapAnimations.celebrateWordCompletion(currentWordRef.current);
+
+        // Create particles
+        if (animationContainerRef.current) {
+          const rect = currentWordRef.current.getBoundingClientRect();
+          const containerRect = animationContainerRef.current.getBoundingClientRect();
+          gsapAnimations.createWordParticles(
+            rect.left - containerRect.left + rect.width / 2,
+            rect.top - containerRect.top,
+            animationContainerRef.current
+          );
+        }
+      }
+
       // Increase combo every 5 correct words
       if (newStreak % 5 === 0) {
         setCombo((prev) => Math.min(prev + 0.5, 3));
@@ -330,27 +397,27 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       // Play streak milestone sound at 10, 20, 30, etc.
       if (newStreak % 10 === 0) {
         sounds.playStreakMilestone(newStreak);
-      }
 
-      // Add particle effect
-      if (currentWordRef.current) {
-        const rect = currentWordRef.current.getBoundingClientRect();
-        const newParticle = {
-          id: Date.now(),
-          x: rect.left + rect.width / 2,
-          y: rect.top,
-        };
-        setParticles((prev) => [...prev, newParticle]);
-
-        // Remove particle after animation
-        setTimeout(() => {
-          setParticles((prev) => prev.filter(p => p.id !== newParticle.id));
-        }, 1000);
+        // GSAP: Streak milestone fireworks
+        if (currentWordRef.current && animationContainerRef.current) {
+          const rect = currentWordRef.current.getBoundingClientRect();
+          const containerRect = animationContainerRef.current.getBoundingClientRect();
+          gsapAnimations.createStreakFireworks(
+            rect.left - containerRect.left + rect.width / 2,
+            rect.top - containerRect.top,
+            animationContainerRef.current
+          );
+        }
       }
     } else {
       setStreak(0);
       setCombo(1);
       sounds.playError(); // Play error sound
+
+      // GSAP: Error shake animation
+      if (currentWordRef.current) {
+        gsapAnimations.shakeOnError(currentWordRef.current);
+      }
     }
   };
 
@@ -511,7 +578,9 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-8">
+    <div ref={mainContainerRef} className="w-full max-w-5xl mx-auto space-y-8 relative">
+      {/* Animation Container for GSAP Particles */}
+      <div ref={animationContainerRef} className="fixed inset-0 pointer-events-none z-50" />
       {/* Help Button */}
       <motion.div
         className="flex justify-end"
@@ -605,7 +674,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
             >
-              <div className="inline-block glass-effect px-8 py-4 rounded-2xl border border-unix-main/30">
+              <div ref={timerDisplayRef} className="inline-block glass-effect px-8 py-4 rounded-2xl border border-unix-main/30">
                 <div className="flex items-center gap-2 mb-1">
                   <Timer className="w-5 h-5 text-unix-main" strokeWidth={2.5} />
                   <div className="text-5xl font-bold text-unix-main mono tech-glow">{timeLeft}</div>
@@ -651,7 +720,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              <div className="inline-block glass-effect px-6 py-3 rounded-2xl border-2 border-unix-accent tech-glow">
+              <div ref={comboRef} className="inline-block glass-effect px-6 py-3 rounded-2xl border-2 border-unix-accent tech-glow">
                 <div className="flex items-center gap-2 text-3xl font-bold text-unix-accent">
                   <Zap className="w-6 h-6" strokeWidth={2.5} />
                   ×{combo.toFixed(1)}

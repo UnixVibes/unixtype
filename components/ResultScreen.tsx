@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { TestResult } from '@/types';
 import { saveScore } from '@/lib/leaderboard';
@@ -9,6 +9,8 @@ import { QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import Leaderboard from './Leaderboard';
 import { getQuoteForPerformance } from '@/lib/developer-quotes';
+import { useGSAP } from '@gsap/react';
+import * as gsapAnimations from '@/lib/gsap-animations';
 
 interface ResultScreenProps {
   result: TestResult;
@@ -24,6 +26,11 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [fortuneQuote, setFortuneQuote] = useState('');
 
+  // GSAP animation refs
+  const rankBadgeRef = useRef<HTMLDivElement>(null);
+  const statCardsRef = useRef<HTMLDivElement>(null);
+  const fortuneCookieRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     // Load saved name from localStorage
     if (typeof window !== 'undefined') {
@@ -34,6 +41,18 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
     const quote = getQuoteForPerformance(result.wpm);
     setFortuneQuote(quote);
   }, [result.wpm]);
+
+  // GSAP: Animate result screen entrance
+  useEffect(() => {
+    if (!showNameInput && rankBadgeRef.current && statCardsRef.current && fortuneCookieRef.current) {
+      const statCards = Array.from(statCardsRef.current.children) as HTMLElement[];
+      gsapAnimations.animateResultScreen(
+        rankBadgeRef.current,
+        statCards,
+        fortuneCookieRef.current
+      );
+    }
+  }, [showNameInput]);
 
   const handleNameSubmit = () => {
     const name = nameInputValue.trim() || 'Anonymous';
@@ -240,7 +259,7 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
             </div>
 
             {/* Rank Badge */}
-            <div className="text-center py-4">
+            <div ref={rankBadgeRef} className="text-center py-4">
               <div className="text-8xl mb-3">{rank.emoji}</div>
               <div className="text-4xl font-bold bg-gradient-to-r from-unix-main to-unix-accent bg-clip-text text-transparent mb-2">
                 {rank.title}
@@ -252,7 +271,7 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-4">
+            <div ref={statCardsRef} className="grid grid-cols-2 gap-4">
               <div className="glass-effect rounded-2xl p-6 text-center border border-unix-main/30">
                 <div className="text-5xl font-bold text-unix-main mb-2">{Math.round(result.wpm)}</div>
                 <div className="text-sm text-unix-sub font-medium">WPM</div>
@@ -318,7 +337,7 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
       >
         <div className="relative">
           {/* Fortune Cookie Container */}
-          <div className="glass-effect rounded-2xl p-6 border border-unix-accent/30 bg-gradient-to-br from-unix-accent/5 to-unix-main/5">
+          <div ref={fortuneCookieRef} className="glass-effect rounded-2xl p-6 border border-unix-accent/30 bg-gradient-to-br from-unix-accent/5 to-unix-main/5">
             <div className="flex items-start gap-4">
               {/* Fortune Cookie Icon */}
               <motion.div
