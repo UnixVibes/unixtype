@@ -20,7 +20,7 @@ export default function ShareCard({ result, playerName = "Anonymous" }: ShareCar
 
   const rank = getRank(result.wpm);
   const shareUrl = typeof window !== "undefined" ? generateShareUrl(result, playerName, rank) : "";
-  const shareText = `I just scored ${result.wpm} WPM with ${result.accuracy}% accuracy on #DevTypeChallenge! 🚀\n\nCan you beat my score?`;
+  const shareText = `I just scored ${result.wpm} WPM with ${result.accuracy}% accuracy on #UnixTypeChallenge! 🚀\n\nCan you beat my score?`;
 
   function generateShareUrl(result: TestResult, name: string, rank: { rank: string; emoji: string }) {
     const baseUrl = window.location.origin;
@@ -100,7 +100,7 @@ export default function ShareCard({ result, playerName = "Anonymous" }: ShareCar
             {rank.rank}
           </h3>
           <p className="text-xl text-unix-text font-bold mb-1">{playerName}</p>
-          <p className="text-sm text-unix-sub">#DevTypeChallenge</p>
+          <p className="text-sm text-unix-sub">#UnixTypeChallenge</p>
         </div>
 
         {/* Stats Grid */}
@@ -150,7 +150,7 @@ export default function ShareCard({ result, playerName = "Anonymous" }: ShareCar
             </div>
             <div>
               <p className="text-unix-main font-bold text-sm">Unixdev</p>
-              <p className="text-unix-sub text-xs">DevType Challenge</p>
+              <p className="text-unix-sub text-xs">UnixType Challenge</p>
             </div>
           </div>
           <div className="text-right">

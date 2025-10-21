@@ -290,7 +290,7 @@ export default function HistoryPage() {
                 <span className="inline-block w-2 h-2 bg-unix-success rounded-full animate-pulse"></span>
                 Visit Website
               </a>
-              <span className="text-unix-purple-light">#DevTypeChallenge</span>
+              <span className="text-unix-purple-light">#UnixTypeChallenge</span>
             </div>
           </div>
         </div>

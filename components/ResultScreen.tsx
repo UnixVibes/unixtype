@@ -9,6 +9,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import Leaderboard from './Leaderboard';
 import ShareCard from './ShareCard';
+import LiveStats from './LiveStats';
 import { getQuoteForPerformance } from '@/lib/developer-quotes';
 import { useGSAP } from '@gsap/react';
 import * as gsapAnimations from '@/lib/gsap-animations';
@@ -291,7 +292,7 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
                   <span className="text-white font-bold text-xl">⚡</span>
                 </div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-unix-main to-unix-accent bg-clip-text text-transparent">
-                  DevType Challenge
+                  UnixType Challenge
                 </h1>
               </div>
               <p className="text-unix-sub text-sm">
@@ -353,7 +354,7 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
             <div className="text-center pt-4 border-t border-unix-border/30">
               <div className="flex items-center justify-between">
                 <div className="flex-1 text-left">
-                  <p className="text-unix-main font-bold text-lg mb-1">#DevTypeChallenge</p>
+                  <p className="text-unix-main font-bold text-lg mb-1">#UnixTypeChallenge</p>
                   <p className="text-unix-sub text-sm mb-1">Can you beat this score?</p>
                   <p className="text-unix-accent text-xs font-semibold">by Unixdev</p>
                 </div>
@@ -417,6 +418,24 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
           </div>
         </div>
       </motion.div>
+
+      {/* Live Stats Dashboard */}
+      {(result.wpmHistory && result.wpmHistory.length > 0) && (
+        <motion.div
+          className="max-w-6xl mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.6 }}
+        >
+          <LiveStats
+            wpmHistory={result.wpmHistory || []}
+            currentWPM={result.wpm}
+            accuracy={result.accuracy}
+            keystrokeData={result.keystrokeData}
+            isActive={false}
+          />
+        </motion.div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-4 justify-center">
