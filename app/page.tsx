@@ -59,8 +59,15 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col relative">
-      {/* Header */}
-      <header className="w-full py-6 px-8 border-b border-unix-border backdrop-blur-sm bg-unix-bg/30 relative z-10">
+      {/* Header - Terminal Style */}
+      <header className="w-full py-6 px-8 border-b border-unix-border-light backdrop-blur-sm bg-unix-bg/50 relative z-10 shadow-lg">
+        {/* Terminal window dots */}
+        <div className="absolute top-4 left-4 flex gap-2">
+          <div className="w-3 h-3 rounded-full bg-unix-error opacity-60"></div>
+          <div className="w-3 h-3 rounded-full bg-yellow-500 opacity-60"></div>
+          <div className="w-3 h-3 rounded-full bg-unix-success opacity-60"></div>
+        </div>
+
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <motion.div
             className="flex items-center gap-4"
@@ -68,16 +75,20 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            <div className="w-12 h-12 bg-gradient-to-br from-unix-main to-unix-accent rounded-xl flex items-center justify-center tech-glow-strong">
-              <Zap className="w-6 h-6 text-white" strokeWidth={2.5} />
+            <div className="w-12 h-12 bg-gradient-to-br from-unix-main via-unix-purple to-unix-accent rounded-xl flex items-center justify-center tech-glow-strong relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
+              <Zap className="w-6 h-6 text-white relative z-10" strokeWidth={2.5} />
             </div>
             <div className="flex flex-col">
-              <div className="text-unix-main text-2xl font-bold tracking-tight">DevType Challenge</div>
+              <div className="holo-text text-2xl font-bold tracking-tight flex items-center gap-2">
+                <span className="text-unix-sub opacity-60">&gt;</span>
+                DevType Challenge
+              </div>
               <div className="text-unix-sub text-xs font-medium flex items-center gap-2">
-                <Zap className="w-3 h-3" />
+                <span className="text-unix-purple">⚡</span>
                 <span>Code. Type. Compete.</span>
-                <span className="text-unix-border">•</span>
-                <span className="text-unix-accent">Powered by Unixdev</span>
+                <span className="text-unix-border-light">|</span>
+                <span className="text-unix-accent neon-accent">Powered by Unixdev</span>
               </div>
             </div>
           </motion.div>
@@ -231,18 +242,24 @@ export default function Home() {
         </AnimatePresence>
       </div>
 
-      {/* Footer */}
-      <footer className="w-full py-6 px-8 border-t border-unix-border backdrop-blur-sm bg-unix-bg/30 relative z-10">
+      {/* Footer - Terminal Style */}
+      <footer className="w-full py-6 px-8 border-t border-unix-border-light backdrop-blur-sm bg-unix-bg/50 relative z-10">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-3">
-              <div className="text-unix-main font-bold text-lg">Unixdev</div>
-              <span className="text-unix-border">|</span>
+              <div className="flex items-center gap-2">
+                <span className="text-unix-purple opacity-60">$</span>
+                <div className="text-unix-main font-bold text-lg neon-accent">Unixdev</div>
+              </div>
+              <span className="text-unix-border-light">|</span>
               <span className="text-unix-sub">⚡ Building tools for developers who type fast and think faster</span>
             </div>
             <div className="flex items-center gap-6 text-unix-sub font-semibold">
-              <span className="text-unix-main">🎮 Play at our booth!</span>
-              <span>💬 #DevTypeChallenge</span>
+              <span className="text-unix-main flex items-center gap-2">
+                <span className="inline-block w-2 h-2 bg-unix-success rounded-full animate-pulse"></span>
+                Live at booth
+              </span>
+              <span className="text-unix-purple-light">#DevTypeChallenge</span>
             </div>
           </div>
         </div>

@@ -15,9 +15,10 @@ body {
   background: linear-gradient(135deg, #0a0e1a 0%, #0d1b2a 100%);
   background-attachment: fixed;
   color: #f0fdfa;
+  position: relative;
 }
 
-/* Animated background effect */
+/* Grid pattern overlay - tech/software house aesthetic */
 body::before {
   content: '';
   position: fixed;
@@ -25,11 +26,44 @@ body::before {
   left: 0;
   right: 0;
   bottom: 0;
-  background:
-    radial-gradient(circle at 20% 50%, rgba(20, 184, 166, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 50%);
+  background-image:
+    linear-gradient(rgba(20, 184, 166, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 184, 166, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 20% 50%, rgba(20, 184, 166, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+  background-size: 50px 50px, 50px 50px, 100% 100%, 100% 100%;
+  background-position: -1px -1px, -1px -1px, 0 0, 0 0;
   pointer-events: none;
   z-index: 0;
+  animation: gridPulse 10s ease-in-out infinite;
+}
+
+/* Scanline effect - terminal aesthetic */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    transparent 50%,
+    rgba(20, 184, 166, 0.02) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 0;
+  animation: scanlines 8s linear infinite;
+}
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes scanlines {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 100%; }
 }
 
 .mono {
@@ -42,16 +76,93 @@ body::before {
   }
 
   .glass-effect {
-    background: rgba(13, 27, 42, 0.6);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(20, 184, 166, 0.2);
+    background: rgba(13, 27, 42, 0.7);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(20, 184, 166, 0.25);
+    position: relative;
+  }
+
+  /* Inner border glow for glass effect */
+  .glass-effect::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.3), rgba(139, 92, 246, 0.2));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.5;
   }
 
   .tech-glow {
-    box-shadow: 0 0 20px rgba(20, 184, 166, 0.3);
+    box-shadow:
+      0 0 20px rgba(20, 184, 166, 0.3),
+      inset 0 1px 0 rgba(20, 184, 166, 0.1);
   }
 
   .tech-glow-strong {
-    box-shadow: 0 0 40px rgba(20, 184, 166, 0.5);
+    box-shadow:
+      0 0 40px rgba(20, 184, 166, 0.5),
+      0 0 80px rgba(139, 92, 246, 0.2),
+      inset 0 1px 0 rgba(20, 184, 166, 0.2);
+  }
+
+  /* Terminal/Code window style */
+  .terminal-window {
+    background: rgba(10, 14, 26, 0.9);
+    border: 1px solid rgba(20, 184, 166, 0.3);
+    position: relative;
+  }
+
+  .terminal-window::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 32px;
+    background: linear-gradient(to bottom, rgba(20, 184, 166, 0.1), transparent);
+    border-bottom: 1px solid rgba(20, 184, 166, 0.2);
+  }
+
+  /* Holographic text effect */
+  .holo-text {
+    background: linear-gradient(135deg, #14b8a6, #8b5cf6, #06b6d4);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: holoShift 3s ease-in-out infinite;
+  }
+
+  @keyframes holoShift {
+    0%, 100% { filter: hue-rotate(0deg); }
+    50% { filter: hue-rotate(20deg); }
+  }
+
+  /* Neon accent */
+  .neon-accent {
+    text-shadow:
+      0 0 10px rgba(20, 184, 166, 0.8),
+      0 0 20px rgba(20, 184, 166, 0.5),
+      0 0 30px rgba(20, 184, 166, 0.3);
+  }
+
+  /* Code block style */
+  .code-block {
+    background: rgba(10, 14, 26, 0.8);
+    border-left: 3px solid #14b8a6;
+    font-family: 'Fira Code', monospace;
+    position: relative;
+  }
+
+  .code-block::before {
+    content: '>';
+    position: absolute;
+    left: 12px;
+    color: #14b8a6;
+    opacity: 0.5;
   }
 }

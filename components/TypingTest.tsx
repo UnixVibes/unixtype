@@ -78,11 +78,21 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
   // Auto-focus input on mount, when instructions are dismissed, and when test becomes active
   useEffect(() => {
     if (inputRef.current && !showInstructions) {
-      inputRef.current.focus();
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   }, [showInstructions, isActive]);
 
-  // Keyboard shortcuts
+  // Focus input when user clicks anywhere in the words container
+  const handleContainerClick = () => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  // Keyboard shortcuts and auto-focus on any keypress
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // ESC to restart test
@@ -101,6 +111,14 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       if (e.key === ' ' && showInstructions) {
         e.preventDefault();
         handleInstructionsDismiss();
+      }
+
+      // Auto-focus input on any typing key press (when not in instructions)
+      if (!showInstructions && inputRef.current && document.activeElement !== inputRef.current) {
+        // Check if it's a typing key (not special keys like Escape, Tab, etc.)
+        if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') {
+          inputRef.current.focus();
+        }
       }
     };
 
@@ -813,7 +831,8 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       <div className="relative">
         <div
           ref={wordsContainerRef}
-          className="text-2xl mono leading-relaxed flex flex-wrap gap-3 pt-6 pb-10 px-10 glass-effect rounded-2xl min-h-[240px] max-h-[240px] overflow-y-auto border border-unix-border/50 scroll-smooth"
+          onClick={handleContainerClick}
+          className="text-2xl mono leading-relaxed flex flex-wrap gap-3 pt-6 pb-10 px-10 glass-effect rounded-2xl min-h-[240px] max-h-[240px] overflow-y-auto border border-unix-border/50 scroll-smooth cursor-text"
           role="application"
           aria-label="Typing test words"
           aria-live="polite"
