@@ -11,6 +11,8 @@ export interface TestResult {
   mode2: string;
   language: string;
   maxStreak?: number;
+  wpmHistory?: number[];
+  keystrokeData?: Record<string, number>;
 }
 
 export interface LeaderboardScore {

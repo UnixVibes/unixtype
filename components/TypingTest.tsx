@@ -7,6 +7,7 @@ import { generateWords } from "@/lib/words";
 import { TestResult } from "@/types";
 import { countChars, calculateWPM, calculateAccuracy } from "@/lib/test-stats";
 import { sounds } from "@/lib/sounds";
+import { advancedSounds } from "@/lib/advanced-sounds";
 import { useGSAP } from "@gsap/react";
 import * as gsapAnimations from "@/lib/gsap-animations";
 
@@ -38,6 +39,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
   const [combo, setCombo] = useState(1);
   const [particles, setParticles] = useState<Array<{id: number, x: number, y: number}>>([]);
   const [personalBest, setPersonalBest] = useState<number>(0);
+  const [keystrokeData, setKeystrokeData] = useState<Record<string, number>>({});
   const [showBeatingRecord, setShowBeatingRecord] = useState(false);
   const [hardMode, setHardMode] = useState(() => {
     // Load hard mode preference from localStorage
@@ -270,6 +272,8 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       mode2: mode === "time" ? timeLimit.toString() : wordCount.toString(),
       language: "english",
       maxStreak,
+      wpmHistory,
+      keystrokeData,
     };
 
     // Save personal best
@@ -303,9 +307,13 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     setMaxStreak(0);
     setCombo(1);
     setParticles([]);
+    setKeystrokeData({});
 
     if (timerRef.current) clearInterval(timerRef.current);
     if (wpmIntervalRef.current) clearInterval(wpmIntervalRef.current);
+
+    // Stop boss music on reset
+    advancedSounds.stopBossBattleMusic();
 
     // Auto-focus input after reset
     setTimeout(() => {
@@ -375,14 +383,28 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       startTest();
     }
 
-    // Play keystroke sound for correct characters
+    // Play keystroke sound for correct characters and track keystrokes
     if (value.length > currentInput.length) {
       const currentWord = words[currentWordIndex];
       const typedChar = value[value.length - 1];
       const expectedChar = currentWord?.[value.length - 1];
 
+      // Track keystroke
+      setKeystrokeData(prev => ({
+        ...prev,
+        [typedChar]: (prev[typedChar] || 0) + 1
+      }));
+
       if (typedChar === expectedChar) {
-        sounds.playKeystroke();
+        // Play mechanical keyboard sound (spacebar has unique sound)
+        if (typedChar === ' ') {
+          advancedSounds.playSpacebarThunk();
+        } else {
+          advancedSounds.playMechanicalKeyClick();
+        }
+      } else {
+        // Play error buzz for incorrect keys
+        advancedSounds.playErrorBuzz();
       }
     }
 
@@ -408,8 +430,8 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       setStreak(newStreak);
       setMaxStreak((prev) => Math.max(prev, newStreak));
 
-      // Play word complete sound
-      sounds.playWordComplete();
+      // Play satisfying THUNK for word completion
+      advancedSounds.playSatisfyingThunk();
 
       // GSAP: Word completion celebration
       if (currentWordRef.current) {
@@ -429,13 +451,19 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
 
       // Increase combo every 5 correct words
       if (newStreak % 5 === 0) {
+        const comboLevel = Math.floor(newStreak / 5);
         setCombo((prev) => Math.min(prev + 0.5, 3));
-        sounds.playComboUp(); // Play combo sound
+        advancedSounds.playComboMultiplier(comboLevel);
       }
 
       // Play streak milestone sound at 10, 20, 30, etc.
       if (newStreak % 10 === 0) {
-        sounds.playStreakMilestone(newStreak);
+        advancedSounds.playStreakPowerUp(newStreak);
+
+        // Start boss battle music at 20+ streak
+        if (newStreak === 20) {
+          advancedSounds.startBossBattleMusic();
+        }
 
         // GSAP: Streak milestone fireworks
         if (currentWordRef.current && animationContainerRef.current) {
@@ -451,7 +479,10 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     } else {
       setStreak(0);
       setCombo(1);
-      sounds.playError(); // Play error sound
+      advancedSounds.playErrorBuzz();
+
+      // Stop boss music on error
+      advancedSounds.stopBossBattleMusic();
 
       // GSAP: Error shake animation
       if (currentWordRef.current) {
@@ -528,7 +559,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
               <Zap className="w-12 h-12 text-white" strokeWidth={2.5} />
             </motion.div>
             <h1 id="instructions-title" className="text-5xl font-bold bg-gradient-to-r from-unix-main to-unix-accent bg-clip-text text-transparent mb-3">
-              DevType Challenge
+              UnixType Challenge
             </h1>
             <p className="text-2xl text-unix-sub font-semibold mb-2">Test Your Developer Speed!</p>
             <p className="text-sm text-unix-accent font-semibold">Powered by Unixdev</p>

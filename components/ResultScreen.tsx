@@ -8,7 +8,10 @@ import { getRank, getNextRank, getProgressToNextRank } from '@/lib/ranks';
 import { QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import Leaderboard from './Leaderboard';
+import ShareCard from './ShareCard';
+import LiveStats from './LiveStats';
 import { getQuoteForPerformance } from '@/lib/developer-quotes';
+import { advancedSounds } from '@/lib/advanced-sounds';
 import { useGSAP } from '@gsap/react';
 import * as gsapAnimations from '@/lib/gsap-animations';
 
@@ -24,6 +27,7 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
   const [nameInputValue, setNameInputValue] = useState('');
   const [savedEntryId, setSavedEntryId] = useState<string | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
   const [fortuneQuote, setFortuneQuote] = useState('');
 
   // GSAP animation refs
@@ -48,6 +52,9 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
     // Generate fortune cookie quote based on performance
     const quote = getQuoteForPerformance(result.wpm);
     setFortuneQuote(quote);
+
+    // Play epic victory fanfare!
+    advancedSounds.playVictoryFanfareWithChoir();
   }, [result.wpm]);
 
   // GSAP: Animate result screen entrance
@@ -129,6 +136,21 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
   // Show leaderboard view
   if (showLeaderboard) {
     return <Leaderboard onClose={() => setShowLeaderboard(false)} highlightId={savedEntryId || undefined} />;
+  }
+
+  // Show share card view
+  if (showShareCard) {
+    return (
+      <div className="w-full max-w-2xl mx-auto space-y-6">
+        <button
+          onClick={() => setShowShareCard(false)}
+          className="text-unix-sub hover:text-unix-main transition-colors font-medium mb-4"
+        >
+          ← Back to Results
+        </button>
+        <ShareCard result={result} playerName={playerName} />
+      </div>
+    );
   }
 
   // Show name input screen
@@ -274,7 +296,7 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
                   <span className="text-white font-bold text-xl">⚡</span>
                 </div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-unix-main to-unix-accent bg-clip-text text-transparent">
-                  DevType Challenge
+                  UnixType Challenge
                 </h1>
               </div>
               <p className="text-unix-sub text-sm">
@@ -336,7 +358,7 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
             <div className="text-center pt-4 border-t border-unix-border/30">
               <div className="flex items-center justify-between">
                 <div className="flex-1 text-left">
-                  <p className="text-unix-main font-bold text-lg mb-1">#DevTypeChallenge</p>
+                  <p className="text-unix-main font-bold text-lg mb-1">#UnixTypeChallenge</p>
                   <p className="text-unix-sub text-sm mb-1">Can you beat this score?</p>
                   <p className="text-unix-accent text-xs font-semibold">by Unixdev</p>
                 </div>
@@ -401,6 +423,24 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
         </div>
       </motion.div>
 
+      {/* Live Stats Dashboard */}
+      {(result.wpmHistory && result.wpmHistory.length > 0) && (
+        <motion.div
+          className="max-w-6xl mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.6 }}
+        >
+          <LiveStats
+            wpmHistory={result.wpmHistory || []}
+            currentWPM={result.wpm}
+            accuracy={result.accuracy}
+            keystrokeData={result.keystrokeData}
+            isActive={false}
+          />
+        </motion.div>
+      )}
+
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-4 justify-center">
         <button
@@ -434,26 +474,16 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
         <button
           ref={shareButtonRef}
           onClick={(e) => {
+            setShowShareCard(true);
             if (shareButtonRef.current) {
               gsapAnimations.buttonPress(shareButtonRef.current);
-            }
-            const shareText = `🎮 DevType Challenge Results!\n\n${rank.emoji} ${rank.title}\n⚡ ${Math.round(result.wpm)} WPM\n🎯 ${Math.round(result.accuracy)}% Accuracy\n🔥 ${maxStreak} Max Streak\n\nCan you beat my score? #DevTypeChallenge`;
-            if (navigator.share) {
-              navigator.share({
-                title: 'DevType Challenge',
-                text: shareText,
-                url: shareableUrl,
-              }).catch(() => {});
-            } else {
-              navigator.clipboard.writeText(`${shareText}\n\n${shareableUrl}`);
-              alert('Score copied to clipboard! Share it with your friends! 🎉');
             }
           }}
           onMouseEnter={() => shareButtonRef.current && gsapAnimations.buttonHover(shareButtonRef.current, true)}
           onMouseLeave={() => shareButtonRef.current && gsapAnimations.buttonHover(shareButtonRef.current, false)}
-          className="inline-flex items-center gap-2 px-8 py-4 bg-unix-success text-white rounded-xl hover:shadow-lg transition-all duration-200 font-bold text-lg relative overflow-hidden"
+          className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-unix-purple to-unix-accent text-white rounded-xl hover:shadow-lg transition-all duration-200 font-bold text-lg relative overflow-hidden"
         >
-          📱 Share Score
+          📱 Share & QR Code
         </button>
         <button
           ref={playAgainButtonRef}

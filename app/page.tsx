@@ -7,6 +7,7 @@ import TypingTest from "@/components/TypingTest";
 import ResultScreen from "@/components/ResultScreen";
 import { TestResult } from "@/types";
 import { sounds } from "@/lib/sounds";
+import { advancedSounds } from "@/lib/advanced-sounds";
 import { getRank } from "@/lib/ranks";
 
 export default function Home() {
@@ -55,6 +56,7 @@ export default function Home() {
     const newState = !soundEnabled;
     setSoundEnabled(newState);
     sounds.setEnabled(newState);
+    advancedSounds.setEnabled(newState);
   };
 
   return (
@@ -82,7 +84,7 @@ export default function Home() {
             <div className="flex flex-col">
               <div className="holo-text text-2xl font-bold tracking-tight flex items-center gap-2">
                 <span className="text-unix-sub opacity-60">&gt;</span>
-                DevType Challenge
+UnixType Challenge
               </div>
               <div className="text-unix-sub text-xs font-medium flex items-center gap-2">
                 <span className="text-unix-purple">⚡</span>
@@ -214,7 +216,7 @@ export default function Home() {
               </div>
 
               <div className="text-center py-4 border-t border-unix-border/30">
-                <p className="text-unix-main font-bold text-xl mb-2">#DevTypeChallenge</p>
+                <p className="text-unix-main font-bold text-xl mb-2">#UnixTypeChallenge</p>
                 <p className="text-unix-sub text-sm mb-4">Can you beat this score?</p>
                 <button
                   onClick={() => {
@@ -271,7 +273,7 @@ export default function Home() {
                 <span className="inline-block w-2 h-2 bg-unix-success rounded-full animate-pulse"></span>
                 Live at booth
               </span>
-              <span className="text-unix-purple-light">#DevTypeChallenge</span>
+              <span className="text-unix-purple-light">#UnixTypeChallenge</span>
             </div>
           </div>
         </div>
