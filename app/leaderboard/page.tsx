@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
 import LocalLeaderboard from "@/lib/local-leaderboard";
 import { LeaderboardScore } from "@/types";
 
@@ -55,6 +55,10 @@ export default function LeaderboardPage() {
             <div className="text-unix-main text-2xl font-bold">unixtype</div>
           </div>
           <div className="text-unix-sub text-sm flex items-center gap-4">
+            <a href="/history" className="hover:text-unix-main transition-colors flex items-center gap-2">
+              <Info className="w-4 h-4" strokeWidth={2.5} />
+              About
+            </a>
             <a href="/" className="hover:text-unix-main transition-colors flex items-center gap-2">
               <ArrowLeft className="w-4 h-4" strokeWidth={2.5} />
               back to test

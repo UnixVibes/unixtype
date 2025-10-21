@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Volume2, VolumeX, Trophy } from "lucide-react";
+import { Zap, Volume2, VolumeX, Trophy, Info } from "lucide-react";
 import TypingTest from "@/components/TypingTest";
 import ResultScreen from "@/components/ResultScreen";
 import { TestResult } from "@/types";
@@ -144,6 +144,18 @@ export default function Home() {
                 )}
               </AnimatePresence>
             </motion.button>
+            <motion.a
+              href="/history"
+              className="px-4 py-2 text-unix-sub hover:text-unix-main transition-all duration-200 font-medium flex items-center gap-2"
+              aria-label="About Unixdev"
+              whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+            >
+              <Info className="w-4 h-4" strokeWidth={2.5} />
+              About
+            </motion.a>
             <motion.a
               href="/leaderboard"
               className="px-4 py-2 text-unix-sub hover:text-unix-main transition-all duration-200 font-medium flex items-center gap-2"
