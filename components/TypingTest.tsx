@@ -39,6 +39,13 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
   const [particles, setParticles] = useState<Array<{id: number, x: number, y: number}>>([]);
   const [personalBest, setPersonalBest] = useState<number>(0);
   const [showBeatingRecord, setShowBeatingRecord] = useState(false);
+  const [hardMode, setHardMode] = useState(() => {
+    // Load hard mode preference from localStorage
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("unixtype_hard_mode") === "true";
+    }
+    return false;
+  });
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -56,7 +63,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
 
   useEffect(() => {
     resetTest();
-  }, [mode, timeLimit, wordCount]);
+  }, [mode, timeLimit, wordCount, hardMode]);
 
   // Load personal best from localStorage
   useEffect(() => {
@@ -68,12 +75,12 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     }
   }, [mode, timeLimit, wordCount]);
 
-  // Auto-focus input on mount and when instructions are dismissed
+  // Auto-focus input on mount, when instructions are dismissed, and when test becomes active
   useEffect(() => {
     if (inputRef.current && !showInstructions) {
       inputRef.current.focus();
     }
-  }, [showInstructions]);
+  }, [showInstructions, isActive]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -104,23 +111,37 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
   // Update caret position when current word or input changes
   useEffect(() => {
     if (currentWordRef.current && wordsContainerRef.current && isActive) {
-      const containerRect = wordsContainerRef.current.getBoundingClientRect();
-      const wordRect = currentWordRef.current.getBoundingClientRect();
+      const container = wordsContainerRef.current;
+      const wordElement = currentWordRef.current;
 
       // Create a temporary span to measure the width of typed characters
       const span = document.createElement('span');
       span.style.visibility = 'hidden';
       span.style.position = 'absolute';
       span.style.fontSize = '1.5rem'; // text-2xl
-      span.style.fontFamily = getComputedStyle(currentWordRef.current).fontFamily;
+      span.style.fontFamily = getComputedStyle(wordElement).fontFamily;
       span.textContent = currentInput;
       document.body.appendChild(span);
       const textWidth = span.getBoundingClientRect().width;
       document.body.removeChild(span);
 
+      // Get positions - word is inside container, caret is sibling to container
+      // Both container and caret are children of the parent div.relative
+      const containerRect = container.getBoundingClientRect();
+      const wordRect = wordElement.getBoundingClientRect();
+
+      // Get the parent element's position (the div.relative)
+      const parent = container.parentElement;
+      if (!parent) return;
+      const parentRect = parent.getBoundingClientRect();
+
+      // Calculate caret position relative to parent:
+      // Word position relative to viewport - parent position = position within parent
+      // Then add the text width to position caret after typed characters
+      // Note: Container now uses pt-6 (24px top padding) instead of p-10
       setCaretPosition({
-        top: wordRect.top - containerRect.top,
-        left: wordRect.left - containerRect.left + textWidth
+        top: wordRect.top - parentRect.top,
+        left: wordRect.left - parentRect.left + textWidth
       });
     }
   }, [currentInput, currentWordIndex, isActive]);
@@ -251,7 +272,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
   }, [startTime, typedWords, currentInput, words, mode, timeLimit, wordCount, wpmHistory, maxStreak, personalBest, onComplete]);
 
   const resetTest = useCallback(() => {
-    const newWords = generateWords(mode === "words" ? wordCount : 200);
+    const newWords = generateWords(mode === "words" ? wordCount : 200, hardMode);
     setWords(newWords);
     setCurrentWordIndex(0);
     setCurrentInput("");
@@ -274,7 +295,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
         inputRef.current.focus();
       }
     }, 0);
-  }, [mode, timeLimit, wordCount]);
+  }, [mode, timeLimit, wordCount, hardMode]);
 
   const startTest = useCallback(() => {
     if (!isActive) {
@@ -425,7 +446,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     if (index < currentWordIndex) {
       return words[index] === typedWords[index] ? "text-unix-main" : "text-unix-error";
     } else if (index === currentWordIndex) {
-      return "text-unix-text border-b-2 border-unix-main";
+      return "text-unix-text border-b-2 border-unix-main pb-1";
     } else if (index === currentWordIndex + 1) {
       // Next word preview - subtle highlight
       return "text-unix-text/70";
@@ -581,13 +602,35 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     <div ref={mainContainerRef} className="w-full max-w-5xl mx-auto space-y-8 relative">
       {/* Animation Container for GSAP Particles */}
       <div ref={animationContainerRef} className="fixed inset-0 pointer-events-none z-50" />
-      {/* Help Button */}
+      {/* Help Button & Hard Mode Toggle */}
       <motion.div
-        className="flex justify-end"
+        className="flex justify-end gap-3"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
+        {/* Hard Mode Toggle */}
+        <motion.button
+          onClick={() => {
+            const newHardMode = !hardMode;
+            setHardMode(newHardMode);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("unixtype_hard_mode", newHardMode.toString());
+            }
+          }}
+          className={`px-5 py-2.5 glass-effect rounded-xl transition-all duration-200 text-sm font-medium border min-h-[44px] min-w-[44px] flex items-center gap-2 ${
+            hardMode
+              ? "bg-unix-accent text-white border-unix-accent shadow-tech"
+              : "text-unix-sub hover:text-unix-main border-unix-border/50 hover:border-unix-main/50"
+          }`}
+          aria-label={hardMode ? "Hard mode enabled - dev terms" : "Easy mode - common words"}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Zap className="w-4 h-4" strokeWidth={2.5} />
+          {hardMode ? "Dev Mode" : "Easy Mode"}
+        </motion.button>
+
         <motion.button
           onClick={() => setShowInstructions(true)}
           className="px-5 py-2.5 glass-effect text-unix-sub hover:text-unix-main rounded-xl transition-all duration-200 text-sm font-medium border border-unix-border/50 hover:border-unix-main/50 min-h-[44px] min-w-[44px] flex items-center gap-2"
@@ -770,7 +813,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
       <div className="relative">
         <div
           ref={wordsContainerRef}
-          className="text-2xl mono leading-relaxed flex flex-wrap gap-3 p-10 glass-effect rounded-2xl min-h-[240px] max-h-[240px] overflow-y-auto border border-unix-border/50 scroll-smooth"
+          className="text-2xl mono leading-relaxed flex flex-wrap gap-3 pt-6 pb-10 px-10 glass-effect rounded-2xl min-h-[240px] max-h-[240px] overflow-y-auto border border-unix-border/50 scroll-smooth"
           role="application"
           aria-label="Typing test words"
           aria-live="polite"
@@ -835,8 +878,8 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
           <div
             className="absolute w-0.5 h-8 bg-unix-main animate-pulse transition-all duration-100"
             style={{
-              top: `${caretPosition.top + 8}px`,
-              left: `${caretPosition.left + 8}px`
+              top: `${caretPosition.top}px`,
+              left: `${caretPosition.left}px`
             }}
             aria-hidden="true"
           />
@@ -878,7 +921,7 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
         value={currentInput}
         onChange={handleInputChange}
         className="w-full p-5 text-xl mono glass-effect text-unix-text rounded-2xl focus:outline-none focus:ring-2 focus:ring-unix-main border border-unix-border/50 focus:border-unix-main/50 transition-all duration-200"
-        placeholder={isActive ? "Type the words above..." : "Click here to start typing..."}
+        placeholder={isActive ? "Type the words above..." : "Start typing to begin..."}
         disabled={!isActive && currentWordIndex >= (mode === "words" ? wordCount : words.length)}
         aria-label="Type the words shown above"
         aria-describedby="typing-instructions"

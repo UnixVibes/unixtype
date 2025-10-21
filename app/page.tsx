@@ -153,7 +153,7 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center py-12 px-4 relative z-10">
+      <div className="flex-1 flex items-center justify-center py-6 px-4 relative z-10">
         <AnimatePresence mode="wait">
           {sharedScore ? (
             // Display shared score card
