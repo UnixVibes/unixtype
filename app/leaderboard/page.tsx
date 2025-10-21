@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, FlaskConical } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import LocalLeaderboard from "@/lib/local-leaderboard";
 import { LeaderboardScore } from "@/types";
 
@@ -58,11 +58,6 @@ export default function LeaderboardPage() {
             <a href="/" className="hover:text-unix-main transition-colors flex items-center gap-2">
               <ArrowLeft className="w-4 h-4" strokeWidth={2.5} />
               back to test
-            </a>
-            <span className="text-unix-border">|</span>
-            <a href="/testing" className="hover:text-unix-main transition-colors flex items-center gap-2">
-              <FlaskConical className="w-4 h-4" strokeWidth={2.5} />
-              test suite
             </a>
           </div>
         </div>

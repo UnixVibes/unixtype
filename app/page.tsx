@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Volume2, VolumeX, Trophy, FlaskConical } from "lucide-react";
+import { Zap, Volume2, VolumeX, Trophy } from "lucide-react";
 import TypingTest from "@/components/TypingTest";
 import ResultScreen from "@/components/ResultScreen";
 import { TestResult } from "@/types";
@@ -144,18 +144,6 @@ export default function Home() {
             >
               <Trophy className="w-4 h-4" strokeWidth={2.5} />
               Leaderboard
-            </motion.a>
-            <motion.a
-              href="/testing"
-              className="px-4 py-2 text-unix-sub hover:text-unix-main transition-all duration-200 font-medium flex items-center gap-2"
-              aria-label="Run comprehensive tests"
-              whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" }}
-            >
-              <FlaskConical className="w-4 h-4" strokeWidth={2.5} />
-              Test Suite
             </motion.a>
             <div className="px-5 py-2 bg-unix-main/10 text-unix-main rounded-lg font-bold border border-unix-main/30">
               💻 Live at Booth
