@@ -469,3 +469,365 @@ export const resetElement = (element: HTMLElement) => {
     boxShadow: 'none'
   });
 };
+
+// ============================================
+// PHASE 4: MICRO-INTERACTIONS
+// ============================================
+
+/**
+ * Button hover effect with scale and glow
+ */
+export const buttonHover = (element: HTMLElement, enter: boolean = true) => {
+  if (enter) {
+    gsap.to(element, {
+      scale: 1.05,
+      boxShadow: '0 10px 30px rgba(20, 184, 166, 0.3)',
+      duration: 0.2,
+      ease: 'power2.out'
+    });
+  } else {
+    gsap.to(element, {
+      scale: 1,
+      boxShadow: '0 0 0 rgba(20, 184, 166, 0)',
+      duration: 0.2,
+      ease: 'power2.in'
+    });
+  }
+};
+
+/**
+ * Button press effect with scale
+ */
+export const buttonPress = (element: HTMLElement) => {
+  const tl = gsap.timeline();
+
+  tl.to(element, {
+    scale: 0.95,
+    duration: 0.1,
+    ease: 'power2.in'
+  })
+  .to(element, {
+    scale: 1,
+    duration: 0.15,
+    ease: 'back.out(2)'
+  });
+
+  return tl;
+};
+
+/**
+ * Mode switch animation with slide and fade
+ */
+export const switchMode = (
+  outElement: HTMLElement,
+  inElement: HTMLElement,
+  direction: 'left' | 'right' = 'right'
+) => {
+  const tl = gsap.timeline();
+  const slideDistance = direction === 'right' ? 30 : -30;
+
+  // Fade out current mode
+  tl.to(outElement, {
+    x: slideDistance,
+    opacity: 0,
+    duration: 0.2,
+    ease: 'power2.in'
+  })
+  // Fade in new mode
+  .fromTo(inElement,
+    { x: -slideDistance, opacity: 0 },
+    {
+      x: 0,
+      opacity: 1,
+      duration: 0.3,
+      ease: 'power2.out'
+    },
+    '-=0.1'
+  );
+
+  return tl;
+};
+
+/**
+ * Loading spinner pulse animation
+ */
+export const loadingPulse = (element: HTMLElement) => {
+  const tl = gsap.timeline({ repeat: -1 });
+
+  tl.to(element, {
+    scale: 1.2,
+    opacity: 0.6,
+    duration: 0.6,
+    ease: 'power1.inOut'
+  })
+  .to(element, {
+    scale: 1,
+    opacity: 1,
+    duration: 0.6,
+    ease: 'power1.inOut'
+  });
+
+  return tl;
+};
+
+/**
+ * Stop loading animation
+ */
+export const stopLoading = (element: HTMLElement) => {
+  gsap.killTweensOf(element);
+  gsap.to(element, {
+    scale: 1,
+    opacity: 1,
+    duration: 0.2
+  });
+};
+
+/**
+ * Tooltip appear animation
+ */
+export const showTooltip = (element: HTMLElement) => {
+  gsap.fromTo(element,
+    { y: 10, opacity: 0, scale: 0.9 },
+    {
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      duration: 0.3,
+      ease: 'back.out(1.7)'
+    }
+  );
+};
+
+/**
+ * Tooltip disappear animation
+ */
+export const hideTooltip = (element: HTMLElement) => {
+  gsap.to(element, {
+    y: 10,
+    opacity: 0,
+    scale: 0.9,
+    duration: 0.2,
+    ease: 'power2.in'
+  });
+};
+
+/**
+ * Card flip animation for stats reveal
+ */
+export const flipCard = (element: HTMLElement, showBack: boolean = true) => {
+  const tl = gsap.timeline();
+
+  if (showBack) {
+    tl.to(element, {
+      rotationY: 90,
+      duration: 0.3,
+      ease: 'power2.in'
+    })
+    .set(element, { rotationY: -90 })
+    .to(element, {
+      rotationY: 0,
+      duration: 0.3,
+      ease: 'power2.out'
+    });
+  } else {
+    tl.to(element, {
+      rotationY: -90,
+      duration: 0.3,
+      ease: 'power2.in'
+    })
+    .set(element, { rotationY: 90 })
+    .to(element, {
+      rotationY: 0,
+      duration: 0.3,
+      ease: 'power2.out'
+    });
+  }
+
+  return tl;
+};
+
+/**
+ * Number counter animation
+ */
+export const animateNumber = (
+  element: HTMLElement,
+  from: number,
+  to: number,
+  duration: number = 1,
+  suffix: string = ''
+) => {
+  const obj = { value: from };
+
+  gsap.to(obj, {
+    value: to,
+    duration,
+    ease: 'power2.out',
+    onUpdate: () => {
+      element.textContent = Math.round(obj.value).toString() + suffix;
+    }
+  });
+};
+
+/**
+ * Progress bar fill animation
+ */
+export const fillProgressBar = (
+  element: HTMLElement,
+  percentage: number,
+  duration: number = 1
+) => {
+  gsap.to(element, {
+    width: `${percentage}%`,
+    duration,
+    ease: 'power2.out'
+  });
+};
+
+/**
+ * Ripple effect on click
+ */
+export const createRipple = (x: number, y: number, container: HTMLElement, color: string = '#14b8a6') => {
+  const ripple = document.createElement('div');
+  ripple.className = 'absolute rounded-full pointer-events-none';
+  ripple.style.left = `${x}px`;
+  ripple.style.top = `${y}px`;
+  ripple.style.width = '10px';
+  ripple.style.height = '10px';
+  ripple.style.backgroundColor = color;
+  ripple.style.transform = 'translate(-50%, -50%)';
+  container.appendChild(ripple);
+
+  gsap.to(ripple, {
+    width: '100px',
+    height: '100px',
+    opacity: 0,
+    duration: 0.6,
+    ease: 'power2.out',
+    onComplete: () => ripple.remove()
+  });
+};
+
+/**
+ * Glow pulse on notification/achievement
+ */
+export const glowPulse = (element: HTMLElement, color: string = '#14b8a6', count: number = 3) => {
+  const tl = gsap.timeline({ repeat: count - 1 });
+
+  tl.to(element, {
+    boxShadow: `0 0 20px ${color}`,
+    duration: 0.3,
+    ease: 'power2.out'
+  })
+  .to(element, {
+    boxShadow: '0 0 0 rgba(0,0,0,0)',
+    duration: 0.3,
+    ease: 'power2.in'
+  });
+
+  return tl;
+};
+
+/**
+ * Shake on invalid input
+ */
+export const shakeInvalid = (element: HTMLElement) => {
+  const tl = gsap.timeline();
+
+  tl.to(element, {
+    x: -5,
+    duration: 0.05,
+    ease: 'power1.inOut'
+  })
+  .to(element, {
+    x: 5,
+    duration: 0.05,
+    repeat: 3,
+    yoyo: true,
+    ease: 'power1.inOut'
+  })
+  .to(element, {
+    x: 0,
+    duration: 0.05
+  });
+
+  return tl;
+};
+
+/**
+ * Success checkmark animation
+ */
+export const successCheckmark = (element: HTMLElement) => {
+  gsap.fromTo(element,
+    { scale: 0, rotation: -180 },
+    {
+      scale: 1,
+      rotation: 0,
+      duration: 0.5,
+      ease: 'back.out(2)'
+    }
+  );
+};
+
+/**
+ * Floating animation for decorative elements
+ */
+export const float = (element: HTMLElement, distance: number = 10) => {
+  gsap.to(element, {
+    y: distance,
+    duration: 2 + Math.random(),
+    repeat: -1,
+    yoyo: true,
+    ease: 'sine.inOut'
+  });
+};
+
+/**
+ * Stagger fade in for lists
+ */
+export const staggerFadeIn = (elements: HTMLElement[], stagger: number = 0.1) => {
+  gsap.fromTo(elements,
+    { opacity: 0, y: 20 },
+    {
+      opacity: 1,
+      y: 0,
+      duration: 0.5,
+      stagger,
+      ease: 'power2.out'
+    }
+  );
+};
+
+/**
+ * Magnetic button effect (follows cursor)
+ */
+export const magneticButton = (
+  button: HTMLElement,
+  event: MouseEvent,
+  strength: number = 0.3
+) => {
+  const rect = button.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+
+  const deltaX = (event.clientX - centerX) * strength;
+  const deltaY = (event.clientY - centerY) * strength;
+
+  gsap.to(button, {
+    x: deltaX,
+    y: deltaY,
+    duration: 0.3,
+    ease: 'power2.out'
+  });
+};
+
+/**
+ * Reset magnetic button
+ */
+export const resetMagneticButton = (button: HTMLElement) => {
+  gsap.to(button, {
+    x: 0,
+    y: 0,
+    duration: 0.4,
+    ease: 'elastic.out(1, 0.5)'
+  });
+};

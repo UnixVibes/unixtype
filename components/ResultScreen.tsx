@@ -30,6 +30,14 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
   const rankBadgeRef = useRef<HTMLDivElement>(null);
   const statCardsRef = useRef<HTMLDivElement>(null);
   const fortuneCookieRef = useRef<HTMLDivElement>(null);
+  const downloadButtonRef = useRef<HTMLButtonElement>(null);
+  const leaderboardButtonRef = useRef<HTMLButtonElement>(null);
+  const shareButtonRef = useRef<HTMLButtonElement>(null);
+  const playAgainButtonRef = useRef<HTMLButtonElement>(null);
+  const wpmNumberRef = useRef<HTMLDivElement>(null);
+  const accuracyNumberRef = useRef<HTMLDivElement>(null);
+  const streakNumberRef = useRef<HTMLDivElement>(null);
+  const rawWpmNumberRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Load saved name from localStorage
@@ -51,8 +59,24 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
         statCards,
         fortuneCookieRef.current
       );
+
+      // Animate numbers counting up
+      setTimeout(() => {
+        if (wpmNumberRef.current) {
+          gsapAnimations.animateNumber(wpmNumberRef.current, 0, Math.round(result.wpm), 1.5, '');
+        }
+        if (accuracyNumberRef.current) {
+          gsapAnimations.animateNumber(accuracyNumberRef.current, 0, Math.round(result.accuracy), 1.5, '%');
+        }
+        if (streakNumberRef.current) {
+          gsapAnimations.animateNumber(streakNumberRef.current, 0, maxStreak, 1.2, '');
+        }
+        if (rawWpmNumberRef.current) {
+          gsapAnimations.animateNumber(rawWpmNumberRef.current, 0, Math.round(result.rawWpm), 1.3, '');
+        }
+      }, 500); // Delay to let cards cascade in first
     }
-  }, [showNameInput]);
+  }, [showNameInput, result.wpm, result.accuracy, result.rawWpm, maxStreak]);
 
   const handleNameSubmit = () => {
     const name = nameInputValue.trim() || 'Anonymous';
@@ -273,19 +297,19 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
             {/* Stats Grid */}
             <div ref={statCardsRef} className="grid grid-cols-2 gap-4">
               <div className="glass-effect rounded-2xl p-6 text-center border border-unix-main/30">
-                <div className="text-5xl font-bold text-unix-main mb-2">{Math.round(result.wpm)}</div>
+                <div ref={wpmNumberRef} className="text-5xl font-bold text-unix-main mb-2">0</div>
                 <div className="text-sm text-unix-sub font-medium">WPM</div>
               </div>
               <div className="glass-effect rounded-2xl p-6 text-center border border-unix-success/30">
-                <div className="text-5xl font-bold text-unix-success mb-2">{Math.round(result.accuracy)}%</div>
+                <div ref={accuracyNumberRef} className="text-5xl font-bold text-unix-success mb-2">0%</div>
                 <div className="text-sm text-unix-sub font-medium">Accuracy</div>
               </div>
               <div className="glass-effect rounded-2xl p-6 text-center border border-unix-accent/30">
-                <div className="text-3xl font-bold text-unix-accent mb-2">{maxStreak}</div>
+                <div ref={streakNumberRef} className="text-3xl font-bold text-unix-accent mb-2">0</div>
                 <div className="text-sm text-unix-sub font-medium">Max Streak</div>
               </div>
               <div className="glass-effect rounded-2xl p-6 text-center border border-unix-border/30">
-                <div className="text-3xl font-bold text-unix-text mb-2">{Math.round(result.rawWpm)}</div>
+                <div ref={rawWpmNumberRef} className="text-3xl font-bold text-unix-text mb-2">0</div>
                 <div className="text-sm text-unix-sub font-medium">Raw WPM</div>
               </div>
             </div>
@@ -380,19 +404,39 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-4 justify-center">
         <button
-          onClick={downloadScoreCard}
-          className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-unix-main to-unix-accent text-white rounded-xl hover:shadow-lg transition-all duration-200 font-bold text-lg"
+          ref={downloadButtonRef}
+          onClick={(e) => {
+            downloadScoreCard();
+            if (downloadButtonRef.current) {
+              gsapAnimations.buttonPress(downloadButtonRef.current);
+            }
+          }}
+          onMouseEnter={() => downloadButtonRef.current && gsapAnimations.buttonHover(downloadButtonRef.current, true)}
+          onMouseLeave={() => downloadButtonRef.current && gsapAnimations.buttonHover(downloadButtonRef.current, false)}
+          className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-unix-main to-unix-accent text-white rounded-xl hover:shadow-lg transition-all duration-200 font-bold text-lg relative overflow-hidden"
         >
           📥 Download Score Card
         </button>
         <button
-          onClick={() => setShowLeaderboard(true)}
-          className="inline-flex items-center gap-2 px-8 py-4 bg-unix-accent text-white rounded-xl hover:shadow-lg transition-all duration-200 font-bold text-lg"
+          ref={leaderboardButtonRef}
+          onClick={() => {
+            setShowLeaderboard(true);
+            if (leaderboardButtonRef.current) {
+              gsapAnimations.buttonPress(leaderboardButtonRef.current);
+            }
+          }}
+          onMouseEnter={() => leaderboardButtonRef.current && gsapAnimations.buttonHover(leaderboardButtonRef.current, true)}
+          onMouseLeave={() => leaderboardButtonRef.current && gsapAnimations.buttonHover(leaderboardButtonRef.current, false)}
+          className="inline-flex items-center gap-2 px-8 py-4 bg-unix-accent text-white rounded-xl hover:shadow-lg transition-all duration-200 font-bold text-lg relative overflow-hidden"
         >
           🏆 View Leaderboard
         </button>
         <button
-          onClick={() => {
+          ref={shareButtonRef}
+          onClick={(e) => {
+            if (shareButtonRef.current) {
+              gsapAnimations.buttonPress(shareButtonRef.current);
+            }
             const shareText = `🎮 DevType Challenge Results!\n\n${rank.emoji} ${rank.title}\n⚡ ${Math.round(result.wpm)} WPM\n🎯 ${Math.round(result.accuracy)}% Accuracy\n🔥 ${maxStreak} Max Streak\n\nCan you beat my score? #DevTypeChallenge`;
             if (navigator.share) {
               navigator.share({
@@ -405,13 +449,23 @@ export default function ResultScreen({ result, onRestart, maxStreak }: ResultScr
               alert('Score copied to clipboard! Share it with your friends! 🎉');
             }
           }}
-          className="inline-flex items-center gap-2 px-8 py-4 bg-unix-success text-white rounded-xl hover:shadow-lg transition-all duration-200 font-bold text-lg"
+          onMouseEnter={() => shareButtonRef.current && gsapAnimations.buttonHover(shareButtonRef.current, true)}
+          onMouseLeave={() => shareButtonRef.current && gsapAnimations.buttonHover(shareButtonRef.current, false)}
+          className="inline-flex items-center gap-2 px-8 py-4 bg-unix-success text-white rounded-xl hover:shadow-lg transition-all duration-200 font-bold text-lg relative overflow-hidden"
         >
           📱 Share Score
         </button>
         <button
-          onClick={onRestart}
-          className="inline-flex items-center gap-2 px-8 py-4 bg-unix-main text-white rounded-xl hover:bg-unix-main/80 transition-all duration-200 font-semibold text-lg shadow-lg"
+          ref={playAgainButtonRef}
+          onClick={() => {
+            onRestart();
+            if (playAgainButtonRef.current) {
+              gsapAnimations.buttonPress(playAgainButtonRef.current);
+            }
+          }}
+          onMouseEnter={() => playAgainButtonRef.current && gsapAnimations.buttonHover(playAgainButtonRef.current, true)}
+          onMouseLeave={() => playAgainButtonRef.current && gsapAnimations.buttonHover(playAgainButtonRef.current, false)}
+          className="inline-flex items-center gap-2 px-8 py-4 bg-unix-main text-white rounded-xl hover:bg-unix-main/80 transition-all duration-200 font-semibold text-lg shadow-lg relative overflow-hidden"
         >
           🔄 Play Again
         </button>
