@@ -48,11 +48,12 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
     resetTest();
   }, [mode, timeLimit, wordCount]);
 
+  // Auto-focus input on mount and when instructions are dismissed
   useEffect(() => {
-    if (inputRef.current) {
+    if (inputRef.current && !showInstructions) {
       inputRef.current.focus();
     }
-  }, []);
+  }, [showInstructions]);
 
   // Update caret position when current word or input changes
   useEffect(() => {
@@ -150,6 +151,13 @@ export default function TypingTest({ onComplete }: TypingTestProps) {
 
     if (timerRef.current) clearInterval(timerRef.current);
     if (wpmIntervalRef.current) clearInterval(wpmIntervalRef.current);
+
+    // Auto-focus input after reset
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 0);
   }, [mode, timeLimit, wordCount]);
 
   const startTest = useCallback(() => {
