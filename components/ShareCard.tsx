@@ -22,14 +22,14 @@ export default function ShareCard({ result, playerName = "Anonymous" }: ShareCar
   const shareUrl = typeof window !== "undefined" ? generateShareUrl(result, playerName, rank) : "";
   const shareText = `I just scored ${result.wpm} WPM with ${result.accuracy}% accuracy on #UnixTypeChallenge! 🚀\n\nCan you beat my score?`;
 
-  function generateShareUrl(result: TestResult, name: string, rank: { rank: string; emoji: string }) {
+  function generateShareUrl(result: TestResult, name: string, rank: { title: string; emoji: string }) {
     const baseUrl = window.location.origin;
     const scoreData = {
       name,
       wpm: result.wpm,
       accuracy: result.accuracy,
       streak: result.maxStreak || 0,
-      rank: rank.rank,
+      rank: rank.title,
       emoji: rank.emoji,
     };
 
@@ -97,7 +97,7 @@ export default function ShareCard({ result, playerName = "Anonymous" }: ShareCar
         <div className="text-center mb-6">
           <div className="text-6xl mb-3">{rank.emoji}</div>
           <h3 className="text-3xl font-bold bg-gradient-to-r from-unix-main via-unix-purple to-unix-accent bg-clip-text text-transparent mb-2">
-            {rank.rank}
+            {rank.title}
           </h3>
           <p className="text-xl text-unix-text font-bold mb-1">{playerName}</p>
           <p className="text-sm text-unix-sub">#UnixTypeChallenge</p>
@@ -116,7 +116,7 @@ export default function ShareCard({ result, playerName = "Anonymous" }: ShareCar
         </div>
 
         {/* Streak */}
-        {result.maxStreak > 0 && (
+        {(result.maxStreak ?? 0) > 0 && (
           <div className="glass-effect rounded-xl p-4 text-center border border-unix-accent/30 mb-6">
             <div className="text-2xl font-bold text-unix-accent">🔥 {result.maxStreak} Streak</div>
           </div>

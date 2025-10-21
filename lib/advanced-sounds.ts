@@ -20,7 +20,7 @@ class AdvancedSoundEffects {
 
       // Create separate gain for background music
       this.bgMusicGain = this.audioContext.createGain();
-      this.bgMusicGain.connect(this.masterGain);
+      this.bgMusicGain.connect(this.masterGain!);
       this.bgMusicGain.gain.value = 0.3; // BG music quieter
 
       // Load sound preference
@@ -60,7 +60,7 @@ class AdvancedSoundEffects {
 
     clickOsc.connect(clickFilter);
     clickFilter.connect(clickGain);
-    clickGain.connect(this.masterGain);
+    clickGain.connect(this.masterGain!);
 
     clickOsc.type = 'square';
     clickOsc.frequency.value = 2000;
@@ -81,7 +81,7 @@ class AdvancedSoundEffects {
     const thockGain = this.audioContext.createGain();
 
     thockOsc.connect(thockGain);
-    thockGain.connect(this.masterGain);
+    thockGain.connect(this.masterGain!);
 
     thockOsc.type = 'sine';
     thockOsc.frequency.value = 150;
@@ -105,7 +105,7 @@ class AdvancedSoundEffects {
 
     thunkOsc.connect(filter);
     filter.connect(thunkGain);
-    thunkGain.connect(this.masterGain);
+    thunkGain.connect(this.masterGain!);
 
     thunkOsc.type = 'sine';
     thunkOsc.frequency.value = 100;
@@ -135,7 +135,7 @@ class AdvancedSoundEffects {
     const bassGain = this.audioContext.createGain();
 
     bassOsc.connect(bassGain);
-    bassGain.connect(this.masterGain);
+    bassGain.connect(this.masterGain!);
 
     bassOsc.type = 'sine';
     bassOsc.frequency.setValueAtTime(100, now);
@@ -152,7 +152,7 @@ class AdvancedSoundEffects {
     const midGain = this.audioContext.createGain();
 
     midOsc.connect(midGain);
-    midGain.connect(this.masterGain);
+    midGain.connect(this.masterGain!);
 
     midOsc.type = 'triangle';
     midOsc.frequency.value = 600;
@@ -168,7 +168,7 @@ class AdvancedSoundEffects {
     const highGain = this.audioContext.createGain();
 
     highOsc.connect(highGain);
-    highGain.connect(this.masterGain);
+    highGain.connect(this.masterGain!);
 
     highOsc.type = 'sine';
     highOsc.frequency.value = 1200;
@@ -212,7 +212,7 @@ class AdvancedSoundEffects {
 
     noise.connect(filter);
     filter.connect(gain);
-    gain.connect(this.masterGain);
+    gain.connect(this.masterGain!);
 
     // Volume envelope for natural crowd swell
     gain.gain.setValueAtTime(0, now);
@@ -236,7 +236,7 @@ class AdvancedSoundEffects {
 
     wooOsc.connect(filter);
     filter.connect(wooGain);
-    wooGain.connect(this.masterGain);
+    wooGain.connect(this.masterGain!);
 
     wooOsc.type = 'sawtooth';
     wooOsc.frequency.setValueAtTime(300, startTime);
@@ -387,7 +387,7 @@ class AdvancedSoundEffects {
 
       osc.connect(filter);
       filter.connect(gain);
-      gain.connect(this.masterGain);
+      gain.connect(this.masterGain!);
 
       osc.type = 'sawtooth';
       osc.frequency.value = note.freq;
@@ -420,7 +420,7 @@ class AdvancedSoundEffects {
 
         osc.connect(filter);
         filter.connect(gain);
-        gain.connect(this.masterGain);
+        gain.connect(this.masterGain!);
 
         osc.type = 'sine';
         osc.frequency.value = fundamental * harmonic;
@@ -458,7 +458,7 @@ class AdvancedSoundEffects {
 
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(this.masterGain);
+    gain.connect(this.masterGain!);
 
     osc.type = 'sine';
     osc.frequency.setValueAtTime(90, startTime);
@@ -487,7 +487,7 @@ class AdvancedSoundEffects {
     const gain = this.audioContext.createGain();
 
     osc.connect(gain);
-    gain.connect(this.masterGain);
+    gain.connect(this.masterGain!);
 
     osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(180, now);
@@ -514,7 +514,7 @@ class AdvancedSoundEffects {
     const gain = this.audioContext.createGain();
 
     osc.connect(gain);
-    gain.connect(this.masterGain);
+    gain.connect(this.masterGain!);
 
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(baseFreq, now);
@@ -540,7 +540,7 @@ class AdvancedSoundEffects {
       const gain = this.audioContext!.createGain();
 
       osc.connect(gain);
-      gain.connect(this.masterGain);
+      gain.connect(this.masterGain!);
 
       osc.type = 'sine';
       osc.frequency.value = freq;
